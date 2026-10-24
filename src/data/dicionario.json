@@ -1,0 +1,57 @@
+{
+  "titulo": "BrightLearn — Plataforma de Cursos Online",
+  "resumo": "1 linha = 1 matrícula em um curso, entre setembro/2025 e julho/2026.",
+  "colunas": [
+    {
+      "coluna": "ID_Matricula",
+      "tipo": "Texto",
+      "descricao": "Identificador único da matrícula."
+    },
+    {
+      "coluna": "Data_Matricula",
+      "tipo": "Data",
+      "descricao": "Data em que o aluno se matriculou no curso."
+    },
+    {
+      "coluna": "Categoria_Curso",
+      "tipo": "Categoria",
+      "descricao": "Área do curso (atenção: grafias inconsistentes nos dados brutos)."
+    },
+    {
+      "coluna": "Dispositivo_Principal",
+      "tipo": "Categoria",
+      "descricao": "Dispositivo mais usado para estudar."
+    },
+    {
+      "coluna": "Pct_Concluido",
+      "tipo": "Número (%)",
+      "descricao": "Percentual do curso concluído (cuidado: há pelo menos um valor acima de 100%, que é erro de registro)."
+    },
+    {
+      "coluna": "Nota_Final",
+      "tipo": "Número (0-10)",
+      "descricao": "Só preenchido para matrículas Concluído — e mesmo assim, algumas estão em branco por falha de registro."
+    },
+    {
+      "coluna": "Dias_Ate_Primeiro_Acesso",
+      "tipo": "Número",
+      "descricao": "Quantos dias depois da matrícula o aluno acessou o curso pela primeira vez."
+    },
+    {
+      "coluna": "Status",
+      "tipo": "Categoria",
+      "descricao": "Concluído, Em andamento ou Evadido."
+    },
+    {
+      "coluna": "Motivo_Evasao",
+      "tipo": "Texto",
+      "descricao": "Preenchido só quando Status = Evadido."
+    }
+  ],
+  "comoUsar": [
+    "Cheque a coluna Categoria_Curso antes de contar frequências — há grafias diferentes para a mesma categoria.",
+    "Pct_Concluido tem pelo menos um valor acima de 100% — é um erro de registro, decida como tratar.",
+    "Nota_Final só existe para quem concluiu, mas mesmo assim tem algumas ausências por falha de registro.",
+    "Pense no negócio como uma plataforma de ensino online querendo entender evasão (dropout) e conclusão de cursos."
+  ]
+}

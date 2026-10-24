@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/* Tema escuro controlado por data-theme (ver ThemeToggle) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------- Tokens de cor (claro) ---------- */
+:root {
+  --bg: #f5f6fb;
+  --surface: #ffffff;
+  --surface-2: #eef0f8;
+  --ink: #0f172a;
+  --muted: #566078;
+  --line: #e2e6f1;
+  --brand: #4f46e5;
+  --brand-ink: #3730a3;
+  --brand-soft: #eceeff;
+  --accent: #f59e0b;
+  --accent-soft: #fff4d9;
+  --ok: #059669;
+  --ok-soft: #d9f5ea;
+  --info: #0284c7;
+  --info-soft: #dcf0fb;
+  --bad: #e11d48;
+  --bad-soft: #ffe1e8;
+  --chart-grid: #e6e9f3;
+  --chart-axis: #566078;
+  color-scheme: light;
+}
+
+/* ---------- Tokens de cor (escuro) ---------- */
+:root[data-theme="dark"] {
+  --bg: #0a0f1f;
+  --surface: #111833;
+  --surface-2: #19224a;
+  --ink: #e8ecf8;
+  --muted: #9aa5c4;
+  --line: #263056;
+  --brand: #8b93ff;
+  --brand-ink: #b4baff;
+  --brand-soft: #1d2354;
+  --accent: #fbbf24;
+  --accent-soft: #3a2f10;
+  --ok: #34d399;
+  --ok-soft: #0f3a2e;
+  --info: #38bdf8;
+  --info-soft: #0c3248;
+  --bad: #fb7185;
+  --bad-soft: #451626;
+  --chart-grid: #232c52;
+  --chart-axis: #9aa5c4;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0f1f;
+    --surface: #111833;
+    --surface-2: #19224a;
+    --ink: #e8ecf8;
+    --muted: #9aa5c4;
+    --line: #263056;
+    --brand: #8b93ff;
+    --brand-ink: #b4baff;
+    --brand-soft: #1d2354;
+    --accent: #fbbf24;
+    --accent-soft: #3a2f10;
+    --ok: #34d399;
+    --ok-soft: #0f3a2e;
+    --info: #38bdf8;
+    --info-soft: #0c3248;
+    --bad: #fb7185;
+    --bad-soft: #451626;
+    --chart-grid: #232c52;
+    --chart-axis: #9aa5c4;
+    color-scheme: dark;
+  }
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Grid sem colunas explícitas = 1 coluna que PODE encolher (evita estouro horizontal no celular).
+   Fica na camada base para que grid-cols-* e lg:grid-cols-* continuem vencendo. */
+@layer base {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* tabela do explorador: cabeçalho fixo dentro do scroll */
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+}
+
+/* barra de rolagem discreta */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* recharts: textos legíveis nos dois temas */
+.recharts-text,
+.recharts-cartesian-axis-tick-value {
+  fill: var(--chart-axis);
+}
+.recharts-default-tooltip {
+  border-radius: 10px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  header, .no-print { display: none !important; }
+  body { background: #fff; }
+}
