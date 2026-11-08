@@ -6,7 +6,7 @@ import { GRUPO } from '../../data/grupo';
 import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib/insights';
 import { fmtN, fmtPct } from '../../lib/format';
 import { PROBLEMAS as P } from '../../lib/clean';
-import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO } from '../../lib/model';
+import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO, PERFIL_DEMORA, PERFIL_RAPIDO } from '../../lib/model';
 import { href } from '../../lib/router';
 import { usePersistido } from '../../lib/storage';
 
@@ -17,7 +17,6 @@ function Recomendacao() {
   const [on, id, mo] = ALAVANCAS;
   const g = DIAG.geral;
   const metaOn = (on.taxaAtual + on.taxaMeta) / 2;
-  const metaId = (id.taxaAtual + id.taxaMeta) / 2;
 
   return (
     <section className="space-y-5">
@@ -26,15 +25,14 @@ function Recomendacao() {
       <div className="rounded-3xl border border-ok/40 bg-ok-soft/50 p-6 sm:p-8">
         <p className="text-xs font-semibold tracking-wider text-ok uppercase">Decisão recomendada</p>
         <p className="mt-2 max-w-4xl font-display text-2xl leading-snug font-bold sm:text-3xl">
-          Lançar um piloto de 60 dias de <span className="text-ok">onboarding ativo</span> (contato até o 3º dia para quem ainda não acessou) junto com uma{' '}
-          <span className="text-ok">trilha flexível em Idiomas</span>, comparando com um grupo de controle antes de ampliar para toda a plataforma.
+          Lançar um piloto de 60 dias de <span className="text-ok">onboarding ativo</span>: contato no 3º e no 5º dia para quem ainda não fez o primeiro acesso, comparando com um grupo de controle antes de ampliar para toda a plataforma.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi rotulo="Ponto de partida" valor={fmtPct(g.taxaEvasao)} tom="bad" dica={`evasão geral · ${fmtPct(g.taxaEvasaoEnc)} entre encerradas`} />
+        <Kpi rotulo="Ponto de partida" valor={fmtPct(g.taxaEvasaoEnc)} tom="bad" dica={`evasão entre encerradas · ${fmtPct(g.taxaEvasao)} sobre todas`} />
         <Kpi rotulo={`${on.alvo}`} valor={fmtPct(on.taxaAtual)} tom="bad" dica={`contra ${fmtPct(on.taxaMeta)} · ${fmtP(on.p)}`} />
-        <Kpi rotulo="Idiomas" valor={fmtPct(id.taxaAtual)} tom="bad" dica={`contra ${fmtPct(id.taxaMeta)} nas demais · ${fmtP(id.p)}`} />
+        <Kpi rotulo="Maior risco no modelo" valor={fmtPct(PERFIL_DEMORA.risco, 0)} tom="bad" dica={`1º acesso em ${LIMIAR_DIAS}+ dias, contra ${fmtPct(PERFIL_RAPIDO.risco, 0)} no mesmo dia`} />
         <Kpi rotulo="Em andamento" valor={`~${fmtN(EVASOES_ESPERADAS, 0)}`} dica={`de ${fmtN(EM_ANDAMENTO.length)} devem evadir (modelo, AUC ${fmtN(MODELO.auc, 2)})`} />
       </div>
 
@@ -43,14 +41,14 @@ function Recomendacao() {
           <h3 className="font-display text-lg font-bold">O que os dados sustentam</h3>
           <ol className="mt-3 list-decimal space-y-2.5 pl-5 text-sm leading-relaxed">
             <li>
-              <strong>A evasão é grande:</strong> {fmtN(g.evadidos)} de {fmtN(g.n)} matrículas ({fmtPct(g.taxaEvasao)}) terminaram em abandono, cerca de 1 a cada 3, enquanto só {fmtPct(g.taxaConclusao)} chegaram ao
+              <strong>A evasão é grande:</strong> {fmtN(g.evadidos)} de {fmtN(g.evadidos + g.concluidos)} matrículas encerradas ({fmtPct(g.taxaEvasaoEnc)}) terminaram em abandono, enquanto só {fmtPct(g.taxaConclusao)} chegaram ao
               fim do curso.
             </li>
             <li>
               <strong>A primeira semana importa:</strong> quem demora {LIMIAR_DIAS}+ dias para o 1º acesso evade {fmtPct(on.taxaAtual)} contra {fmtPct(on.taxaMeta)}; até 7 dias a taxa é praticamente plana.
             </li>
             <li>
-              <strong>Idiomas concentra o problema:</strong> {fmtPct(id.taxaAtual)} de evasão, e {fmtPct(DIAG.motivos.idiomasFaltaDeTempo / DIAG.motivos.idiomasInformados, 0)} dos evadidos de Idiomas que informaram motivo citam falta de tempo.
+              <strong>Idiomas e celular agravam:</strong> Idiomas evade {fmtPct(id.taxaAtual)} contra {fmtPct(id.taxaMeta)} nas demais, e "Falta de tempo" é o motivo mais citado. Ficam como apoio, não como foco.
             </li>
             <li>
               <strong>Dá para priorizar:</strong> o modelo aponta as matrículas em andamento de maior risco para o contato começar por elas.
@@ -84,26 +82,10 @@ function Recomendacao() {
                   {fmtPct(on.taxaAtual, 0)} → ≤ {fmtPct(metaOn, 0)}
                 </td>
               </tr>
-              <tr>
-                <td className={td}>
-                  Trilha flexível em Idiomas
-                  <p className="text-xs text-muted">{fmtN(id.n)} matrículas-alvo</p>
-                </td>
-                <td className={`${td} tnum text-right font-semibold`}>
-                  {fmtN(evasoesEvitadas(id, 0.3), 0)} a {fmtN(evasoesEvitadas(id, 0.6), 0)}
-                  <p className="text-xs font-normal text-muted">
-                    evasão geral → {fmtPct(novaTaxaGeral(id, 0.6))} a {fmtPct(novaTaxaGeral(id, 0.3))}
-                  </p>
-                </td>
-                <td className={`${td} tnum text-right`}>
-                  {fmtPct(id.taxaAtual, 0)} → ≤ {fmtPct(metaId, 0)}
-                </td>
-              </tr>
             </tbody>
           </Tabela>
           <p className="mt-3 text-xs leading-relaxed text-muted">
-            Meta do piloto = fechar metade da diferença para o grupo de referência. Os grupos se sobrepõem, então os ganhos não se somam. Deixamos a experiência mobile ({fmtN(mo.n)} matrículas, esforço{' '}
-            {mo.esforco.toLowerCase()}, evidência {mo.evidencia.toLowerCase()}) para uma segunda fase.
+            Meta do piloto = fechar metade da diferença para o grupo de referência. Deixamos para uma segunda fase a trilha flexível em Idiomas ({fmtN(id.n)} matrículas) e a experiência mobile ({fmtN(mo.n)} matrículas).
           </p>
           <p className="mt-3 text-sm">
             <strong>Como medir:</strong> sortear metade dos alunos-alvo para receber a ação e manter a outra metade como controle; comparar a taxa de evasão dos dois grupos ao fim de 60 dias.
@@ -121,7 +103,7 @@ function Recomendacao() {
             ['Unidade é a matrícula', 'Um mesmo aluno pode ter várias matrículas; a base não traz identificador do aluno.'],
             ['Associação não é causa', 'As diferenças entre grupos podem ter outras causas que a base não registra (motivação, preço, qualidade do curso).'],
             ['Modelo modesto', `AUC ${fmtN(MODELO.auc, 2)}: serve para priorizar, não para decidir sobre um aluno.`],
-            ['Dados tratados', `Substituímos ${P.pct.linhas} valores de % e ${P.nota.falhaRegistro} notas por medianas; o efeito nos indicadores é pequeno, mas existe.`],
+            ['Dados tratados', `Corrigimos ${P.pct.linhas} valores de % (concluídos → 100; demais em branco) e deixamos ${P.nota.falhaRegistro} notas em branco, sem imputar; nada foi inventado.`],
             ['Motivo não informado', `${fmtPct(P.motivo.naoInformado / P.motivo.evadidos, 0)} dos evadidos não registraram motivo; a causa real desses casos é desconhecida.`],
             ['Sem custos nem receita', 'A base não traz preço nem custo, então não calculamos retorno financeiro (ROI) das ações.'],
             ['Base fictícia', 'Os dados foram preparados para a atividade; conclusões sobre empresas reais exigiriam dados reais.'],
@@ -151,7 +133,7 @@ const SECOES = [
 
 const REGRAS = ['PDF em A4', 'Fonte Arial ou Times New Roman, tamanho 12', 'Espaçamento 1,5', 'Margens de 2,5 cm', 'Até 6 páginas (sem contar capa e referências)', 'Registro de onde a IA foi usada'];
 
-const IA_PADRAO = `Uso de IA neste trabalho: utilizamos a ferramenta Claude (Anthropic) como apoio para (1) montar o site que apresenta a base e as análises, (2) sugerir o método de padronização das categorias e as fórmulas da taxa de evasão, da mediana por status e da regressão logística, e (3) revisar a redação. Todos os números foram conferidos pelo grupo contra os totais da base (${fmtN(DIAG.geral.n)} matrículas; ${fmtN(DIAG.geral.evadidos)} evadidos = ${fmtPct(DIAG.geral.taxaEvasao)}; ${fmtN(DIAG.geral.concluidos)} concluídos = ${fmtPct(DIAG.geral.taxaConclusao)}) e cada integrante consegue explicar como cada cálculo foi feito.`;
+const IA_PADRAO = `Uso de IA neste trabalho: utilizamos a ferramenta Claude (Anthropic) como apoio para (1) montar o site que apresenta a base e as análises, (2) sugerir o método de padronização das categorias e as fórmulas da taxa de evasão, da regressão logística, e (3) revisar a redação. Todos os números foram conferidos pelo grupo contra os totais da base (${fmtN(DIAG.geral.n)} matrículas; ${fmtN(DIAG.geral.evadidos)} evadidos = ${fmtPct(DIAG.geral.taxaEvasao)}; ${fmtN(DIAG.geral.concluidos)} concluídos = ${fmtPct(DIAG.geral.taxaConclusao)}) e cada integrante consegue explicar como cada cálculo foi feito.`;
 
 function RegistroIA() {
   const [texto, setTexto] = usePersistido('bl-ia', IA_PADRAO);

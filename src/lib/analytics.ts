@@ -44,7 +44,7 @@ export function resumo(rows: Row[]): Resumo {
     taxaEvasao: n ? evadidos / n : NaN,
     taxaAndamento: n ? andamento / n : NaN,
     taxaEvasaoEnc: concluidos + evadidos ? evadidos / (concluidos + evadidos) : NaN,
-    medPct: median(rows.map((r) => r.pct)),
+    medPct: median(rows.filter((r) => r.pct != null).map((r) => r.pct as number)),
     medDias: median(rows.map((r) => r.dias)),
     mediaDias: mean(rows.map((r) => r.dias)),
     medNota: median(notas),

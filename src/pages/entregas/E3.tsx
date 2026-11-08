@@ -9,7 +9,7 @@ import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib
 import { porGrupo } from '../../lib/analytics';
 import { ROWS } from '../../lib/clean';
 import { fmtN, fmtPct } from '../../lib/format';
-import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO, prever } from '../../lib/model';
+import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO, PERFIL_ALTO, PERFIL_BAIXO, PERFIL_DEMORA, PERFIL_RAPIDO, prever } from '../../lib/model';
 import { CATEGORIAS, DISPOSITIVOS } from '../../lib/types';
 import type { Categoria, Dispositivo } from '../../lib/types';
 
@@ -227,7 +227,7 @@ function Simulador() {
 /* Página                                                              */
 /* ------------------------------------------------------------------ */
 export default function E3() {
-  const porCat = porGrupo(ROWS, (r) => r.categoria, CATEGORIAS, 'todas').sort((a, b) => b.taxa - a.taxa);
+  const porCat = porGrupo(ROWS, (r) => r.categoria, CATEGORIAS, 'encerradas').sort((a, b) => b.taxa - a.taxa);
   const maior = porCat[0];
   const menor = porCat[porCat.length - 1];
   const g = DIAG.geral;
@@ -267,7 +267,7 @@ export default function E3() {
         pergunta="Qual é a taxa de conclusão e de evasão da BrightLearn e como a evasão varia entre as categorias de curso?"
         como={
           <p>
-            Contamos as matrículas por status e calculamos a taxa de evasão (evadidos ÷ matrículas) em cada categoria, usando a base tratada. Comparamos cada categoria com a taxa geral.
+            Contamos as matrículas por status na base tratada e calculamos a taxa de evasão em cada categoria. Como quem está "Em andamento" ainda não terminou, a taxa de evasão usa só as <strong>encerradas</strong>: evadidos ÷ (concluídos + evadidos) = {fmtN(g.evadidos)} ÷ {fmtN(g.concluidos + g.evadidos)} = {fmtPct(g.taxaEvasaoEnc)}.
           </p>
         }
         resultado={
@@ -289,7 +289,7 @@ export default function E3() {
               <BarraTaxa
                 altura={200}
                 dados={porCat.map((c) => ({ nome: c.nome, valor: c.taxa, n: c.n }))}
-                referencia={g.taxaEvasao}
+                referencia={g.taxaEvasaoEnc}
                 rotuloRef="geral"
                 descricao="Taxa de evasão por categoria"
               />
@@ -305,7 +305,7 @@ export default function E3() {
             fazem diferente?).
           </>
         }
-        limite={`A taxa considera todas as matrículas; ${fmtN(g.andamento)} ainda estão em andamento. Na base "só encerradas" o ranking se mantém (veja o Dashboard).`}
+        limite={`As ${fmtN(g.andamento)} matrículas em andamento ficaram fora da taxa de evasão porque ainda podem concluir ou evadir. No Dashboard dá para alternar para "todas as matrículas" e o ranking se mantém.`}
       />
 
       {/* ================= Diagnóstica ================= */}
@@ -318,17 +318,20 @@ export default function E3() {
         como={
           <>
             <p>
-              Testamos as hipóteses H1–H4 comparando a taxa de evasão entre grupos (ex.: quem demorou {LIMIAR_DIAS}+ dias contra quem não demorou) e lendo os motivos declarados. Como extra, aplicamos um{' '}
+              Testamos as hipóteses H1–H4 comparando a taxa de evasão entre grupos (categoria, dispositivo e tempo até o 1º acesso) e lendo os motivos declarados. A taxa usa só as matrículas <strong>encerradas</strong> ({fmtN(DIAG.enc.n)}), porque quem está em andamento ainda não terminou. Como extra, aplicamos um{' '}
               <em>teste z de duas proporções</em>: p &lt; 0,05 indica que a diferença é pouco provável de ser acaso.
+            </p>
+            <p className="mt-2">
+              <strong>Faixas de dias:</strong> 0 dia (mesmo dia), 1 dia, 2–3 dias, 4–7 dias (ainda na 1ª semana) e {LIMIAR_DIAS}+ dias (depois da 1ª semana). Os cortes seguem a semana de estudo, e a mediana é 2 dias, então as primeiras faixas concentram a maioria dos alunos.
             </p>
           </>
         }
         resultado={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Evidencia hip="H1 · confirmada" rotulo={`Demorou ${LIMIAR_DIAS}+ dias p/ 1º acesso`} a={DIAG.tarde.taxa} b={DIAG.cedo.taxa} nomeA={`${fmtN(DIAG.tarde.n)} matrículas`} nomeB={`${fmtN(DIAG.cedo.n)} que acessaram antes`} p={t.tempo.p} />
-              <Evidencia hip="H2 · confirmada" rotulo="Categoria Idiomas" a={DIAG.idiomas.taxa} b={DIAG.outrasCategorias.taxa} nomeA={`${fmtN(DIAG.idiomas.n)} matrículas`} nomeB="demais categorias" p={t.idiomas.p} />
-              <Evidencia hip={t.celular.p < 0.05 ? 'H3 · confirmada (efeito menor)' : 'H3 · não confirmada'} rotulo="Celular como dispositivo principal" a={DIAG.celular.taxa} b={DIAG.outrosDispositivos.taxa} nomeA={`${fmtN(DIAG.celular.n)} matrículas`} nomeB="computador ou tablet" p={t.celular.p} />
+              <Evidencia hip="H1 · confirmada" rotulo={`Demorou ${LIMIAR_DIAS}+ dias p/ 1º acesso`} a={DIAG.tarde.taxa} b={DIAG.cedo.taxa} nomeA={`${fmtN(DIAG.tarde.n)} encerradas`} nomeB={`${fmtN(DIAG.cedo.n)} que acessaram antes`} p={t.tempo.p} />
+              <Evidencia hip="H2 · confirmada" rotulo="Categoria Idiomas" a={DIAG.idiomas.taxa} b={DIAG.outrasCategorias.taxa} nomeA={`${fmtN(DIAG.idiomas.n)} encerradas`} nomeB="demais categorias" p={t.idiomas.p} />
+              <Evidencia hip={t.celular.p < 0.05 ? 'H3 · confirmada (efeito menor)' : 'H3 · não confirmada'} rotulo="Celular como dispositivo principal" a={DIAG.celular.taxa} b={DIAG.outrosDispositivos.taxa} nomeA={`${fmtN(DIAG.celular.n)} encerradas`} nomeB="computador ou tablet" p={t.celular.p} />
               <div className="rounded-xl border border-line p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">Motivo mais citado</p>
@@ -341,13 +344,13 @@ export default function E3() {
                 </p>
               </div>
             </div>
-            <GDias rows={ROWS} base="todas" altura={210} />
+            <GDias rows={ROWS} base="encerradas" altura={210} />
           </div>
         }
         acao={
           <>
-            Atacar a causa que mais pesa e é mais fácil de agir: <strong>ativar o aluno logo na primeira semana</strong> (a taxa fica em ~27–29% até 7 dias e salta depois disso) e tratar a{' '}
-            <strong>falta de tempo</strong> em Idiomas com formatos mais flexíveis. O celular merece revisão, mas é o sinal mais fraco.
+            Atacar a causa que mais pesa e é mais fácil de agir: <strong>ativar o aluno logo na primeira semana</strong> (a taxa fica entre 36% e 38% até 7 dias e salta depois disso) e deixar{' '}
+            Idiomas (<strong>falta de tempo</strong>) e o celular como apoio. São sinais reais, mas o 1º acesso é o que a plataforma consegue atacar logo no início.
           </>
         }
         limite="São associações, não provas de causa: quem demora a começar pode já estar menos motivado por outro motivo que a base não registra."
@@ -359,7 +362,7 @@ export default function E3() {
         tipo="preditiva"
         responde="O que vai acontecer com quem ainda está estudando?"
         cor="bg-brand text-white"
-        pergunta={`Dados a categoria, o dispositivo e os dias até o 1º acesso, qual a chance de uma matrícula evadir, e quantas das ${fmtN(EM_ANDAMENTO.length)} matrículas em andamento devem evadir?`}
+        pergunta="Juntando os sinais da diagnóstica, que perfil de matrícula nova tem mais risco de evadir, e quanto pesa a demora no 1º acesso nisso?"
         como={
           <>
             <p>
@@ -372,6 +375,32 @@ export default function E3() {
         }
         resultado={
           <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-bad/40 bg-bad-soft/40 p-3">
+                <p className="text-xs font-semibold tracking-wide text-bad uppercase">Demorou {LIMIAR_DIAS}+ dias</p>
+                <p className="tnum mt-1 font-display text-3xl font-extrabold text-bad">{fmtPct(PERFIL_DEMORA.risco, 0)}</p>
+                <p className="text-sm">{PERFIL_DEMORA.descricao}</p>
+              </div>
+              <div className="rounded-xl border border-ok/40 bg-ok-soft/40 p-3">
+                <p className="text-xs font-semibold tracking-wide text-ok uppercase">Acessou no mesmo dia</p>
+                <p className="tnum mt-1 font-display text-3xl font-extrabold text-ok">{fmtPct(PERFIL_RAPIDO.risco, 0)}</p>
+                <p className="text-sm">{PERFIL_RAPIDO.descricao}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted">Só o primeiro acesso muda entre os dois perfis: é o sinal que mais pesa. Idiomas e celular aumentam o risco por cima disso (extremos abaixo).</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-bad/40 bg-bad-soft/40 p-3">
+                <p className="text-xs font-semibold tracking-wide text-bad uppercase">Perfil de maior risco</p>
+                <p className="tnum mt-1 font-display text-3xl font-extrabold text-bad">{fmtPct(PERFIL_ALTO.risco, 0)}</p>
+                <p className="text-sm">{PERFIL_ALTO.descricao}</p>
+              </div>
+              <div className="rounded-xl border border-ok/40 bg-ok-soft/40 p-3">
+                <p className="text-xs font-semibold tracking-wide text-ok uppercase">Perfil de menor risco</p>
+                <p className="tnum mt-1 font-display text-3xl font-extrabold text-ok">{fmtPct(PERFIL_BAIXO.risco, 0)}</p>
+                <p className="text-sm">{PERFIL_BAIXO.descricao}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted">Média entre as encerradas: {fmtPct(MODELO.base, 0)}. Use a calculadora abaixo para testar qualquer outro perfil.</p>
             <Calculadora />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-line p-3">
@@ -458,7 +487,7 @@ export default function E3() {
         }
         acao={
           <>
-            O time de Retenção recebe toda semana a <strong>lista das matrículas em andamento ordenada por risco</strong> e contata primeiro as de risco alto, antes que o aluno desista. Com {fmtN(EM_ANDAMENTO.length)} matrículas em andamento e capacidade limitada, a lista diz por onde começar.
+            Como o 1º acesso é o sinal que mais pesa, o sistema <strong>acompanha cada matrícula nova até o 1º acesso</strong> e passa a marcá-la como risco alto quando o prazo avança (a partir do 3º dia sem acessar); Idiomas e celular entram só como agravantes. Para quem já está estudando, o time recebe toda semana a <strong>lista das {fmtN(EM_ANDAMENTO.length)} matrículas em andamento ordenada por risco</strong>.
           </>
         }
         limite={`AUC ${fmtN(MODELO.auc, 2)} indica poder preditivo modesto (0,5 = chute; 1,0 = perfeito): o modelo ajuda a priorizar grupos, mas não decide sozinho o destino de um aluno. Faltam variáveis como engajamento semanal ou preço.`}
@@ -470,11 +499,11 @@ export default function E3() {
         tipo="prescritiva"
         responde="O que devemos fazer?"
         cor="bg-ok text-white"
-        pergunta="Qual ação reduz mais a evasão e quantas matrículas ela salva, considerando o esforço de cada uma?"
+        pergunta="Que ação concreta a plataforma consegue executar, para quem ela vale e em que momento, e quantas evasões evita?"
         como={
           <>
             <p>
-              Transformamos cada causa encontrada na diagnóstica em uma ação e simulamos o ganho: se a ação aproximar o grupo-alvo da taxa de um grupo de referência, quantas evasões deixam de acontecer?
+              Transformamos cada causa encontrada na diagnóstica em uma ação com <strong>público</strong> e <strong>momento</strong> definidos, e simulamos o ganho: se a ação aproximar o grupo-alvo da taxa de um grupo de referência (entre as matrículas encerradas), quantas evasões deixam de acontecer?
             </p>
             <p className="mt-2">Use o controle ao lado para testar cenários mais otimistas ou conservadores.</p>
           </>
@@ -482,7 +511,7 @@ export default function E3() {
         resultado={<Simulador />}
         acao={
           <>
-            Começar por <strong>onboarding ativo</strong> (esforço baixo, grupo bem definido, evidência forte), com <strong>trilha flexível em Idiomas</strong> em seguida. Medir a taxa de evasão do grupo-alvo em um piloto de 60 dias antes de ampliar. A recomendação completa está na{' '}
+            Começar por <strong>onboarding ativo</strong>: toda matrícula nova que não acessou até o <strong>3º dia</strong> recebe e-mail + push/WhatsApp com o link da 1ª aula e meta de 15 min, repetido no 5º dia (antes de fechar a 1ª semana, quando a evasão salta). Idiomas e celular ficam para uma segunda fase. Medir a taxa de evasão do grupo-alvo em um piloto de 60 dias antes de ampliar. A recomendação completa está na{' '}
             <a className="font-semibold text-brand-ink underline" href="#/entregas/5">
               Entrega 5
             </a>
@@ -504,10 +533,10 @@ export default function E3() {
           </thead>
           <tbody>
             {[
-              ['Descritiva', 'Qual a taxa de conclusão/evasão e como varia por categoria?', `Priorizar ${maior.nome} na revisão de cursos; usar ${menor.nome} como benchmark.`],
-              ['Diagnóstica', 'O que diferencia quem evade de quem conclui?', 'Atacar a demora no 1º acesso e a falta de tempo (Idiomas).'],
-              ['Preditiva', 'Qual a chance de evadir de cada matrícula em andamento?', 'Lista semanal de risco para o time de Retenção.'],
-              ['Prescritiva', 'Qual ação evita mais evasões considerando o esforço?', 'Piloto de onboarding ativo + trilha flexível em Idiomas.'],
+              ['Descritiva', 'Como está a plataforma (concluem, evadem, em andamento) e como a evasão varia por categoria?', `Priorizar ${maior.nome} na revisão de cursos; usar ${menor.nome} como benchmark.`],
+              ['Diagnóstica', 'Onde a evasão é maior: categoria, dispositivo ou tempo até o 1º acesso?', 'Atacar a demora no 1º acesso; Idiomas e celular ficam como apoio.'],
+              ['Preditiva', 'Que perfil de matrícula nova tem mais risco de evadir?', 'Marcar risco alto quem não acessou até o 3º dia e priorizar a lista semanal da Retenção.'],
+              ['Prescritiva', 'Que ação, para quem e quando evita evasões?', 'Contato no 3º e 5º dia para quem não acessou (piloto de 60 dias).'],
             ].map(([a, b, c]) => (
               <tr key={a}>
                 <td className={clsx(td, 'font-semibold')}>{a}</td>

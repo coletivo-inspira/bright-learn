@@ -16,7 +16,6 @@ import type {
   Row,
   Status,
 } from './types';
-import { STATUSES } from './types';
 
 export const RAW = raw as RawRow[];
 
@@ -43,30 +42,17 @@ export function padronizaCategoria(s: string): Categoria {
 
 /* ---------------------------------------------------------------------------
  * Problema 2 — Pct_Concluido > 100 (impossível)
- * Tratamento: trocar pela MEDIANA do Pct_Concluido dos registros válidos
- * (≤ 100) do mesmo Status.
+ * Tratamento: aluno Concluído -> 100%. Em andamento / Evadido -> deixa em BRANCO
+ * (não dá para saber o valor certo) e a linha fica fora do cálculo do percentual.
  * ------------------------------------------------------------------------- */
 export const PCT_MAX_VALIDO = 100;
-
-const arred1 = (v: number) => Math.round(v * 10) / 10;
-
-export const PCT_MEDIANA_POR_STATUS = Object.fromEntries(
-  STATUSES.map((s) => [
-    s,
-    arred1(
-      median(
-        RAW.filter((r) => r.Status === s && r.Pct_Concluido <= PCT_MAX_VALIDO).map(
-          (r) => r.Pct_Concluido,
-        ),
-      ),
-    ),
-  ]),
-) as Record<Status, number>;
 
 /* ---------------------------------------------------------------------------
  * Problema 3 — Nota_Final ausente
  *  • aluno NÃO concluído  -> "não se aplica": continua vazio (não é dado faltante)
- *  • aluno Concluído      -> falha de registro: imputa a MEDIANA das notas dos concluídos
+ *  • aluno Concluído      -> falha de registro: também continua em BRANCO
+ * Sensibilidade: NOTA_MEDIANA é a mediana das notas existentes; mostramos que
+ * preencher os 15 casos com ela quase não muda a média (ver PROBLEMAS.nota).
  * ------------------------------------------------------------------------- */
 export const NOTA_MEDIANA = median(
   RAW.filter((r) => r.Status === 'Concluído' && r.Nota_Final != null).map(
@@ -88,15 +74,15 @@ export const ROWS: Row[] = RAW.map((r): Row => {
   const status = r.Status as Status;
 
   const pctInvalido = r.Pct_Concluido > PCT_MAX_VALIDO;
-  const pct = pctInvalido ? PCT_MEDIANA_POR_STATUS[status] : r.Pct_Concluido;
+  const pct: number | null = pctInvalido ? (status === 'Concluído' ? 100 : null) : r.Pct_Concluido;
 
-  const notaImputada = status === 'Concluído' && r.Nota_Final == null;
-  const nota = notaImputada ? NOTA_MEDIANA : r.Nota_Final;
+  const notaSemRegistro = status === 'Concluído' && r.Nota_Final == null;
+  const nota = r.Nota_Final;
 
   const flags: Flags = {
     categoria: r.Categoria_Curso !== categoria,
     pct: pctInvalido,
-    nota: notaImputada,
+    nota: notaSemRegistro,
     outlierDias: r.Dias_Ate_Primeiro_Acesso > DIAS_CERCA,
     motivoNI: r.Motivo_Evasao === 'Não informado',
   };
@@ -133,18 +119,25 @@ export const PROBLEMAS = {
   pct: {
     linhas: ROWS.filter((r) => r.flags.pct).length,
     valores: [...new Set(RAW.filter((r) => r.Pct_Concluido > PCT_MAX_VALIDO).map((r) => r.Pct_Concluido))],
+    paraCem: ROWS.filter((r) => r.flags.pct && r.status === 'Concluído').length,
+    emBranco: ROWS.filter((r) => r.flags.pct && r.status !== 'Concluído').length,
+    usados: ROWS.filter((r) => r.pct != null).length,
     mediaAntes: mean(RAW.map((r) => r.Pct_Concluido)),
-    mediaDepois: mean(ROWS.map((r) => r.pct)),
+    mediaDepois: mean(ROWS.filter((r) => r.pct != null).map((r) => r.pct as number)),
     medianaAntes: median(RAW.map((r) => r.Pct_Concluido)),
-    medianaDepois: median(ROWS.map((r) => r.pct)),
+    medianaDepois: median(ROWS.filter((r) => r.pct != null).map((r) => r.pct as number)),
   },
   nota: {
     vazias: RAW.filter((r) => r.Nota_Final == null).length,
     naoSeAplica: RAW.filter((r) => r.Nota_Final == null && r.Status !== 'Concluído').length,
     falhaRegistro: ROWS.filter((r) => r.flags.nota).length,
     concluidos: RAW.filter((r) => r.Status === 'Concluído').length,
+    notasValidas: RAW.filter((r) => r.Nota_Final != null).length,
     mediaAntes: mean(RAW.filter((r) => r.Nota_Final != null).map((r) => r.Nota_Final as number)),
-    mediaDepois: mean(ROWS.filter((r) => r.status === 'Concluído').map((r) => r.nota as number)),
+    mediaSeImputada: mean([
+      ...RAW.filter((r) => r.Nota_Final != null).map((r) => r.Nota_Final as number),
+      ...RAW.filter((r) => r.Status === 'Concluído' && r.Nota_Final == null).map(() => NOTA_MEDIANA),
+    ]),
     mediana: NOTA_MEDIANA,
   },
   dias: {

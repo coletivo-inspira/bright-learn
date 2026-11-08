@@ -168,3 +168,9 @@ export const EM_ANDAMENTO: Pontuada[] = ROWS.filter((r) => r.status === 'Em anda
 
 /** Quantas das matrículas em andamento devem evadir, em média, segundo o modelo. */
 export const EVASOES_ESPERADAS = EM_ANDAMENTO.reduce((s, v) => s + v.risco, 0);
+
+/** Perfis extremos de matrícula nova (para descrever quem tem mais e menos risco). */
+export const PERFIL_ALTO = { descricao: 'Idiomas, celular e 8+ dias até o 1º acesso', risco: prever({ categoria: 'Idiomas', dispositivo: 'Celular', dias: LIMIAR_DIAS }) };
+export const PERFIL_BAIXO = { descricao: 'Marketing, computador/tablet e 1º acesso em até 7 dias', risco: prever({ categoria: 'Marketing', dispositivo: 'Computador', dias: 0 }) };
+export const PERFIL_DEMORA = { descricao: 'mesmo aluno (Tecnologia, celular) com 1º acesso em 8+ dias', risco: prever({ categoria: 'Tecnologia', dispositivo: 'Celular', dias: LIMIAR_DIAS }) };
+export const PERFIL_RAPIDO = { descricao: 'mesmo aluno (Tecnologia, celular) com 1º acesso no mesmo dia', risco: prever({ categoria: 'Tecnologia', dispositivo: 'Celular', dias: 0 }) };

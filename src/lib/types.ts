@@ -33,9 +33,9 @@ export interface RawRow {
 export interface Flags {
   /** grafia da categoria foi padronizada */
   categoria: boolean;
-  /** Pct_Concluido > 100 foi substituído pela mediana do status */
+  /** Pct_Concluido > 100: Concluído virou 100; Em andamento/Evadido ficaram em branco */
   pct: boolean;
-  /** Nota_Final ausente em aluno Concluído foi imputada (mediana) */
+  /** Concluído sem Nota_Final: mantida em branco (não imputada) */
   nota: boolean;
   /** Dias até o 1º acesso acima da cerca de Tukey (mantido, é dado real) */
   outlierDias: boolean;
@@ -53,7 +53,7 @@ export interface Row {
   categoria: Categoria;
   categoriaOriginal: string;
   dispositivo: Dispositivo;
-  pct: number;
+  pct: number | null;
   pctOriginal: number;
   nota: number | null;
   notaOriginal: number | null;

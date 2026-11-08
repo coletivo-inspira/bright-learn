@@ -3,14 +3,7 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { AntesDepois, ChartCard, Distribuicao } from '../../components/charts';
 import { Badge, Callout, Card, SectionTitle, Tabela, td, th } from '../../components/ui';
 import dicionario from '../../data/dicionario.json';
-import {
-  DIAS_CERCA,
-  NOTA_MEDIANA,
-  PCT_MEDIANA_POR_STATUS,
-  PROBLEMAS as P,
-  RAW,
-  ROWS,
-} from '../../lib/clean';
+import { DIAS_CERCA, NOTA_MEDIANA, PROBLEMAS as P, RAW, ROWS } from '../../lib/clean';
 import { fmtData, fmtN, fmtPct, fmtPctPonto } from '../../lib/format';
 import { href } from '../../lib/router';
 import { contar, mean, median, mode, skewness } from '../../lib/stats';
@@ -137,10 +130,11 @@ export default function E2() {
   const histPct = BINS.map((b) => ({
     nome: b,
     antes: RAW.filter((r) => bin(r.Pct_Concluido) === b).length,
-    depois: ROWS.filter((r) => bin(r.pct) === b).length,
+    depois: ROWS.filter((r) => r.pct != null && bin(r.pct) === b).length,
   }));
   const rowsPct = RAW.filter((r) => r.Pct_Concluido > 100);
   const porStatusPct = STATUSES.map((s) => ({ s, linhas: rowsPct.filter((r) => r.Status === s).length }));
+  const pctValidos = ROWS.filter((r) => r.pct != null);
 
   /* --- P3: nota --- */
   const notasValidas = RAW.filter((r) => r.Nota_Final != null).map((r) => r.Nota_Final as number);
@@ -277,19 +271,19 @@ export default function E2() {
           }
           tratamento={
             <>
-              Substituir pela <strong>mediana do Pct_Concluido dos registros válidos do mesmo status</strong>: Concluído = {fmtN(PCT_MEDIANA_POR_STATUS['Concluído'], 1)}% · Em andamento = {fmtN(PCT_MEDIANA_POR_STATUS['Em andamento'], 1)}% · Evadido ={' '}
-              {fmtN(PCT_MEDIANA_POR_STATUS['Evadido'], 1)}%.
+              Nos <strong>{P.pct.paraCem} Concluídos</strong>, o valor certo só pode ser <strong>100%</strong>. Nos outros <strong>{P.pct.emBranco}</strong> (Em andamento e Evadido) não dá para saber o valor certo; inventar um (por exemplo, a
+              mediana do grupo) seria chutar. Por isso ficam <strong>em branco</strong> e <strong>fora do cálculo</strong> do percentual ({fmtN(P.pct.usados)} de {fmtN(ROWS.length)} linhas usadas).
             </>
           }
-          medida="mediana (por status)"
+          medida="mediana"
           porque={
             <>
-              O % concluído se divide em três grupos bem diferentes (concluídos ≈ 100, em andamento ≈ 50, evadidos ≈ 25), então a média geral ({fmtN(P.pct.mediaAntes, 1)}%) não representa
-              ninguém e ainda é puxada pelos 140. A mediana de cada status é imune ao erro e respeita o grupo da matrícula.
+              O % concluído se divide em três grupos bem diferentes (concluídos ≈ 100, em andamento ≈ 50, evadidos ≈ 25), então a média geral não representa ninguém. A mediana ({fmtN(P.pct.medianaDepois, 2)}%) resume melhor e não é puxada por valores
+              extremos.
             </>
           }
         >
-          <ChartCard titulo="Distribuição do % concluído" tipo="Antes × depois" rodape={`Média: ${fmtN(P.pct.mediaAntes, 1)}% → ${fmtN(P.pct.mediaDepois, 1)}% · Mediana: ${fmtN(P.pct.medianaAntes, 1)}% → ${fmtN(P.pct.medianaDepois, 1)}% · Máximo: 140% → 100%`}>
+          <ChartCard titulo="Distribuição do % concluído" tipo="Antes × depois" rodape={`Média: ${fmtN(P.pct.mediaAntes, 2)}% → ${fmtN(P.pct.mediaDepois, 2)}% · Mediana: ${fmtN(P.pct.medianaAntes, 2)}% → ${fmtN(P.pct.medianaDepois, 2)}% · Máximo: 140% → 100% · Linhas usadas: ${fmtN(ROWS.length)} → ${fmtN(P.pct.usados)}`}>
             <AntesDepois dados={histPct} altura={250} />
           </ChartCard>
         </Problema>
@@ -308,23 +302,22 @@ export default function E2() {
           }
           tratamento={
             <>
-              Os {fmtN(P.nota.naoSeAplica)} "não se aplica" continuam vazios. Os {P.nota.falhaRegistro} concluídos sem nota recebem a <strong>mediana das notas dos concluídos ({fmtN(NOTA_MEDIANA, 1)})</strong> e ficam
-              marcados como imputados.
+              Os {fmtN(P.nota.naoSeAplica)} "não se aplica" continuam vazios, e os {P.nota.falhaRegistro} concluídos sem nota <strong>também ficam em branco</strong> (sem inventar valor). Testamos o outro caminho, preencher com a mediana (
+              {fmtN(NOTA_MEDIANA, 1)}): a média vai de {fmtN(P.nota.mediaAntes, 3)} para {fmtN(P.nota.mediaSeImputada, 3)}, ou seja, <strong>a escolha não muda o resultado</strong>.
             </>
           }
           medida="mediana"
           porque={
             <>
-              A nota é limitada de 0 a 10 e tem leve cauda para as notas baixas (assimetria {fmtN(skewNota, 2)}). A mediana é um valor real da escala e não é puxada pelos extremos. Como são só {fmtPct(P.nota.falhaRegistro / P.nota.concluidos)} dos
-              concluídos, o impacto é mínimo: a média vai de {fmtN(P.nota.mediaAntes, 3)} para {fmtN(P.nota.mediaDepois, 3)}.
+              A nota é limitada de 0 a 10 e tem leve cauda para as notas baixas (assimetria {fmtN(skewNota, 2)}). A mediana ({fmtN(NOTA_MEDIANA, 1)}) é um valor real da escala e não é puxada pelos extremos; ela é calculada com as {fmtN(P.nota.notasValidas)} notas existentes.
             </>
           }
         >
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
               { v: fmtN(P.nota.naoSeAplica), l: 'não se aplica', s: 'ficam vazias', tom: 'text-ink' },
-              { v: fmtN(P.nota.falhaRegistro), l: 'falha de registro', s: `imputadas = ${fmtN(NOTA_MEDIANA, 1)}`, tom: 'text-accent' },
-              { v: fmtN(P.nota.concluidos - P.nota.falhaRegistro), l: 'notas válidas', s: 'inalteradas', tom: 'text-ok' },
+              { v: fmtN(P.nota.falhaRegistro), l: 'falha de registro', s: 'ficam em branco', tom: 'text-accent' },
+              { v: fmtN(P.nota.notasValidas), l: 'notas válidas', s: 'usadas no cálculo', tom: 'text-ok' },
             ].map((c) => (
               <div key={c.l} className="rounded-xl border border-line p-3">
                 <p className={`tnum font-display text-2xl font-extrabold ${c.tom}`}>{c.v}</p>
@@ -337,23 +330,23 @@ export default function E2() {
             <thead>
               <tr>
                 <th className={th}>Nota (concluídos)</th>
-                <th className={`${th} text-right`}>Antes</th>
-                <th className={`${th} text-right`}>Depois</th>
+                <th className={`${th} text-right`}>Em branco (adotado)</th>
+                <th className={`${th} text-right`}>Se imputasse {fmtN(NOTA_MEDIANA, 1)}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td className={td}>Média</td>
                 <td className={`${td} tnum text-right`}>{fmtN(P.nota.mediaAntes, 3)}</td>
-                <td className={`${td} tnum text-right`}>{fmtN(P.nota.mediaDepois, 3)}</td>
+                <td className={`${td} tnum text-right`}>{fmtN(P.nota.mediaSeImputada, 3)}</td>
               </tr>
               <tr>
                 <td className={td}>Mediana</td>
                 <td className={`${td} tnum text-right`}>{fmtN(median(notasValidas), 1)}</td>
-                <td className={`${td} tnum text-right`}>{fmtN(median(ROWS.filter((r) => r.status === 'Concluído').map((r) => r.nota as number)), 1)}</td>
+                <td className={`${td} tnum text-right`}>{fmtN(NOTA_MEDIANA, 1)}</td>
               </tr>
               <tr>
-                <td className={td}>Concluídos com nota</td>
+                <td className={td}>Notas usadas</td>
                 <td className={`${td} tnum text-right`}>{fmtN(notasValidas.length)}</td>
                 <td className={`${td} tnum text-right`}>{fmtN(P.nota.concluidos)}</td>
               </tr>
@@ -459,7 +452,7 @@ export default function E2() {
               { v: 'Dispositivo_Principal', t: 'Nominal', d: '3 dispositivos; celular é metade da base', m: 'Moda', val: `${modaDisp.nome} (${fmtPct(modaDisp.n / ROWS.length)})` },
               { v: 'Status', t: 'Nominal', d: 'concluído, em andamento e evadido', m: 'Moda', val: `${modaStatus.nome} (${fmtPct(modaStatus.n / ROWS.length)})` },
               { v: 'Motivo_Evasao', t: 'Nominal', d: `5 motivos; ${fmtPct(P.motivo.naoInformado / P.motivo.evadidos, 0)} não informados`, m: 'Moda', val: `${modaMotivo.nome} (${fmtPct(modaMotivo.n / informados)} dos informados)` },
-              { v: 'Pct_Concluido', t: 'Numérica', d: `3 grupos distintos por status; erro de 140% em ${P.pct.linhas} linhas`, m: 'Mediana por status', val: `${fmtN(PCT_MEDIANA_POR_STATUS['Concluído'], 0)} / ${fmtN(PCT_MEDIANA_POR_STATUS['Em andamento'], 1)} / ${fmtN(PCT_MEDIANA_POR_STATUS['Evadido'], 1)}%` },
+              { v: 'Pct_Concluido', t: 'Numérica', d: `3 grupos distintos por status; erro de 140% em ${P.pct.linhas} linhas`, m: 'Mediana', val: `${fmtN(P.pct.medianaDepois, 2)}%` },
               { v: 'Nota_Final', t: 'Numérica (0–10)', d: `quase simétrica (assimetria ${fmtN(skewNota, 2)}); média ${fmtN(mean(notasValidas), 2)} ≈ mediana ${fmtN(median(notasValidas), 1)}`, m: 'Mediana', val: fmtN(NOTA_MEDIANA, 1) },
               { v: 'Dias_Ate_Primeiro_Acesso', t: 'Numérica', d: `assimétrica à direita (${fmtN(skewDias, 1)}); ${P.dias.linhas} outliers; moda = ${mode(diasTodos)}`, m: 'Mediana', val: `${fmtN(median(diasTodos), 0)} dias (média ${fmtN(mean(diasTodos), 1)})` },
             ].map((l) => (
@@ -492,11 +485,13 @@ export default function E2() {
             {[
               ['Linhas na base', fmtN(RAW.length), fmtN(ROWS.length) + ' (nenhuma excluída)'],
               ['Grafias de Categoria_Curso', String(P.categoria.grafiasAntes), String(P.categoria.grafiasDepois)],
-              ['Pct_Concluido: valor máximo', fmtPctPonto(Math.max(...RAW.map((r) => r.Pct_Concluido)), 0), fmtPctPonto(Math.max(...ROWS.map((r) => r.pct)), 0)],
+              ...catAntesDepois.map((c) => [`Registros em ${c.nome}`, fmtN(c.antes), fmtN(c.depois)]),
+              ['Pct_Concluido: valor máximo', fmtPctPonto(Math.max(...RAW.map((r) => r.Pct_Concluido)), 0), fmtPctPonto(Math.max(...pctValidos.map((r) => r.pct as number)), 0)],
               ['Pct_Concluido: média', fmtPctPonto(P.pct.mediaAntes, 2), fmtPctPonto(P.pct.mediaDepois, 2)],
-              ['Pct_Concluido: mediana', fmtPctPonto(P.pct.medianaAntes, 1), fmtPctPonto(P.pct.medianaDepois, 1)],
-              ['Concluídos sem nota', fmtN(P.nota.falhaRegistro), '0'],
-              ['Nota média dos concluídos', fmtN(P.nota.mediaAntes, 3), fmtN(P.nota.mediaDepois, 3)],
+              ['Pct_Concluido: mediana', fmtPctPonto(P.pct.medianaAntes, 2), fmtPctPonto(P.pct.medianaDepois, 2)],
+              ['Pct_Concluido: linhas usadas', fmtN(RAW.length), fmtN(P.pct.usados)],
+              ['Concluídos sem nota', fmtN(P.nota.falhaRegistro), fmtN(P.nota.falhaRegistro) + ' (em branco)'],
+              ['Nota média dos concluídos', fmtN(P.nota.mediaAntes, 3), fmtN(P.nota.mediaAntes, 3) + ` (${fmtN(P.nota.notasValidas)} notas)`],
               ['Dias até 1º acesso: outliers', fmtN(P.dias.linhas), fmtN(P.dias.linhas) + ' (mantidos)'],
             ].map(([a, b, c]) => (
               <tr key={a}>

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { ExternalLink, FileText, MessageCircleQuestion, Mic2, Send } from 'lucide-react';
 import { Callout, Card, SectionTitle, Tabela, td, th } from '../../components/ui';
 import { GRUPO } from '../../data/grupo';
-import { NOTA_MEDIANA, PCT_MEDIANA_POR_STATUS, PROBLEMAS as P } from '../../lib/clean';
+import { NOTA_MEDIANA, PROBLEMAS as P } from '../../lib/clean';
 import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP } from '../../lib/insights';
 import { fmtN, fmtPct } from '../../lib/format';
 import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO } from '../../lib/model';
@@ -48,7 +48,7 @@ function Pergunta({ q, children }: { q: string; children: ReactNode }) {
 
 export default function EFinal() {
   const g = DIAG.geral;
-  const [on, id] = ALAVANCAS;
+  const [on] = ALAVANCAS;
 
   return (
     <>
@@ -138,23 +138,19 @@ export default function EFinal() {
         </SectionTitle>
 
         <Pergunta q="Como a taxa de evasão foi calculada?">
-          Evadidos ÷ total de matrículas: {fmtN(g.evadidos)} ÷ {fmtN(g.n)} = <strong>{fmtPct(g.taxaEvasao)}</strong>. Como {fmtN(g.andamento)} matrículas ainda estão em andamento, também mostramos a versão que ignora essas: {fmtN(g.evadidos)} ÷ (
-          {fmtN(g.concluidos)} + {fmtN(g.evadidos)}) = <strong>{fmtPct(g.taxaEvasaoEnc)}</strong>.
+          Evadidos ÷ (concluídos + evadidos) = {fmtN(g.evadidos)} ÷ ({fmtN(g.concluidos)} + {fmtN(g.evadidos)}) = <strong>{fmtPct(g.taxaEvasaoEnc)}</strong>. Usamos só as matrículas <em>encerradas</em> porque as {fmtN(g.andamento)} em andamento ainda não têm desfecho. Sobre todas as matrículas seria {fmtN(g.evadidos)} ÷ {fmtN(g.n)} = {fmtPct(g.taxaEvasao)}, mas isso mistura quem ainda pode concluir.
         </Pergunta>
 
-        <Pergunta q="Por que usaram mediana, e não média, em Pct_Concluido e Dias_Ate_Primeiro_Acesso?">
-          Porque a média é sensível a valores extremos. Em <code>Pct_Concluido</code> havia o erro de 140%; em <code>Dias_Ate_Primeiro_Acesso</code> a distribuição é assimétrica à direita: média de {fmtN(P.dias.media, 2)} dias contra
-          mediana de {fmtN(P.dias.mediana, 0)} dias. A mediana descreve o aluno típico.
+        <Pergunta q="Por que usaram mediana, e não média, em Dias_Ate_Primeiro_Acesso?">
+          Porque a distribuição é assimétrica à direita: média de {fmtN(P.dias.media, 2)} dias contra mediana de {fmtN(P.dias.mediana, 0)} dias. A mediana descreve o aluno típico; a média é puxada pelos casos extremos.
         </Pergunta>
 
-        <Pergunta q="Por que o 140% virou a mediana do status e não simplesmente 100%?">
-          Dos {P.pct.linhas} registros com erro, só alguns eram de concluídos. Para um evadido ou alguém em andamento, 100% contradiria o status. Usando a mediana do mesmo status (concluído {fmtN(PCT_MEDIANA_POR_STATUS['Concluído'], 0)}%, em
-          andamento {fmtN(PCT_MEDIANA_POR_STATUS['Em andamento'], 1)}%, evadido {fmtN(PCT_MEDIANA_POR_STATUS['Evadido'], 1)}%), o valor fica coerente com cada caso; para os concluídos o resultado coincide com 100%.
+        <Pergunta q="O que fizeram com os valores de Pct_Concluido acima de 100%?">
+          Eram {P.pct.linhas} registros inválidos. Para <strong>concluídos</strong>, o percentual só pode ser 100%, então corrigimos para 100. Para os demais, <strong>não sabemos o valor real</strong>, então deixamos em branco em vez de inventar um número. Os {fmtN(P.pct.usados)} valores válidos seguem na análise.
         </Pergunta>
 
-        <Pergunta q="Por que imputaram a nota em vez de apagar as linhas?">
-          Eram só {P.nota.falhaRegistro} concluídos sem nota ({fmtPct(P.nota.falhaRegistro / P.nota.concluidos)}); apagar essas matrículas jogaria fora informação de status, categoria e dispositivo que as outras análises usam. Imputamos a mediana (
-          {fmtN(NOTA_MEDIANA, 1)}) e marcamos as linhas. A nota média quase não muda ({fmtN(P.nota.mediaAntes, 3)} → {fmtN(P.nota.mediaDepois, 3)}). As {fmtN(P.nota.naoSeAplica)} notas vazias de quem não concluiu <em>não são faltantes</em>: não se aplicam.
+        <Pergunta q="Por que não imputaram a nota dos concluídos sem nota?">
+          São {P.nota.falhaRegistro} concluídos sem nota. Preencher com a mediana ({fmtN(NOTA_MEDIANA, 1)}) seria inventar um dado, então mantivemos em branco e calculamos a nota só com as {fmtN(P.nota.notasValidas)} notas existentes. As {fmtN(P.nota.naoSeAplica)} notas vazias de quem não concluiu <em>não são faltantes</em>: não se aplicam.
         </Pergunta>
 
         <Pergunta q="Por que não removeram os outliers de dias até o primeiro acesso?">
@@ -174,7 +170,7 @@ export default function EFinal() {
 
         <Pergunta q="De onde vêm as 'evasões evitadas' da prescritiva?">
           Fórmula: matrículas do grupo × (taxa atual − taxa do grupo de referência) × % da diferença que a ação fecha. Onboarding: {fmtN(on.n)} × ({fmtPct(on.taxaAtual)} − {fmtPct(on.taxaMeta)}) × 50% ={' '}
-          <strong>{fmtN(evasoesEvitadas(on, 0.5), 1)}</strong> evasões. Idiomas: {fmtN(id.n)} × ({fmtPct(id.taxaAtual)} − {fmtPct(id.taxaMeta)}) × 50% = <strong>{fmtN(evasoesEvitadas(id, 0.5), 1)}</strong>. É uma simulação, não uma garantia.
+          <strong>{fmtN(evasoesEvitadas(on, 0.5), 1)}</strong> evasões. É uma simulação, não uma garantia.
         </Pergunta>
 
         <Pergunta q="Qual é a maior limitação do trabalho?">

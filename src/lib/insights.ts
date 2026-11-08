@@ -13,13 +13,19 @@ const taxa = (rows: Row[]) => evadidos(rows) / rows.length;
 
 const geral = resumo(ROWS);
 
-/* ---------- grupos de comparação ---------- */
-const tarde = ROWS.filter((r) => r.dias >= LIMIAR_DIAS);
-const cedo = ROWS.filter((r) => r.dias < LIMIAR_DIAS);
-const idiomas = ROWS.filter((r) => r.categoria === 'Idiomas');
-const outrasCategorias = ROWS.filter((r) => r.categoria !== 'Idiomas');
-const celular = ROWS.filter((r) => r.dispositivo === 'Celular');
-const outrosDispositivos = ROWS.filter((r) => r.dispositivo !== 'Celular');
+/**
+ * DENOMINADOR: quem está "Em andamento" ainda não concluiu nem evadiu, então as taxas
+ * de evasão das comparações usam só as matrículas ENCERRADAS (concluídos + evadidos).
+ */
+const encerradas = ROWS.filter((r) => r.status !== 'Em andamento');
+
+/* ---------- grupos de comparação (só encerradas) ---------- */
+const tarde = encerradas.filter((r) => r.dias >= LIMIAR_DIAS);
+const cedo = encerradas.filter((r) => r.dias < LIMIAR_DIAS);
+const idiomas = encerradas.filter((r) => r.categoria === 'Idiomas');
+const outrasCategorias = encerradas.filter((r) => r.categoria !== 'Idiomas');
+const celular = encerradas.filter((r) => r.dispositivo === 'Celular');
+const outrosDispositivos = encerradas.filter((r) => r.dispositivo !== 'Celular');
 
 const motivosInformados = ROWS.filter((r) => r.status === 'Evadido' && r.motivo && r.motivo !== 'Não informado');
 const faltaDeTempo = motivosInformados.filter((r) => r.motivo === 'Falta de tempo');
@@ -28,6 +34,7 @@ const idiomasFaltaDeTempo = idiomasInformados.filter((r) => r.motivo === 'Falta 
 
 export const DIAG = {
   geral,
+  enc: { n: encerradas.length, evadidos: evadidos(encerradas), taxa: taxa(encerradas) },
   tarde: { n: tarde.length, evadidos: evadidos(tarde), taxa: taxa(tarde) },
   cedo: { n: cedo.length, evadidos: evadidos(cedo), taxa: taxa(cedo) },
   idiomas: { n: idiomas.length, evadidos: evadidos(idiomas), taxa: taxa(idiomas) },
@@ -66,7 +73,7 @@ export const ALAVANCAS: Alavanca[] = [
   {
     id: 'onboarding',
     nome: 'Onboarding ativo',
-    acao: 'Contato proativo (e-mail/WhatsApp/push) até o 3º dia para quem ainda não acessou o curso.',
+    acao: 'Para toda matrícula nova que não acessou até o 3º dia: e-mail + push/WhatsApp com link direto da 1ª aula e meta de 15 min; repetir no 5º dia.',
     alvo: `Quem leva ${LIMIAR_DIAS}+ dias para o 1º acesso`,
     referencia: `quem acessa em menos de ${LIMIAR_DIAS} dias`,
     n: DIAG.tarde.n,
@@ -79,7 +86,7 @@ export const ALAVANCAS: Alavanca[] = [
   {
     id: 'idiomas',
     nome: 'Trilha flexível em Idiomas',
-    acao: 'Microlições curtas, metas semanais ajustáveis e lembretes para quem tem pouco tempo.',
+    acao: 'Na matrícula, perguntar o tempo livre por semana e montar plano de 2 a 3 sessões curtas com lembretes.',
     alvo: 'Cursos de Idiomas',
     referencia: 'as demais categorias',
     n: DIAG.idiomas.n,
@@ -92,7 +99,7 @@ export const ALAVANCAS: Alavanca[] = [
   {
     id: 'mobile',
     nome: 'Experiência mobile',
-    acao: 'Revisar o fluxo de estudo no celular (vídeos offline, retomar de onde parou).',
+    acao: 'Revisar o fluxo no celular: retomar de onde parou e baixar aulas para ver offline.',
     alvo: 'Quem estuda principalmente pelo celular',
     referencia: 'quem usa computador ou tablet',
     n: DIAG.celular.n,
@@ -111,8 +118,8 @@ export const ALAVANCAS: Alavanca[] = [
 export const evasoesEvitadas = (a: Alavanca, efetividade: number): number =>
   a.n * Math.max(0, a.taxaAtual - a.taxaMeta) * efetividade;
 
-/** Nova taxa de evasão geral se só essa alavanca fosse aplicada. */
+/** Nova taxa de evasão (entre encerradas) se só essa alavanca fosse aplicada. */
 export const novaTaxaGeral = (a: Alavanca, efetividade: number): number =>
-  (geral.evadidos - evasoesEvitadas(a, efetividade)) / geral.n;
+  (DIAG.enc.evadidos - evasoesEvitadas(a, efetividade)) / DIAG.enc.n;
 
 export const fmtP = (p: number): string => (p < 0.001 ? 'p < 0,001' : `p = ${p.toFixed(3).replace('.', ',')}`);

@@ -28,7 +28,7 @@ export default function E4() {
 
       {/* ---------- KPI ---------- */}
       <section className="grid gap-5 lg:grid-cols-[1fr_1.6fr]">
-        <Kpi destaque rotulo="KPI em destaque · Taxa de evasão" valor={fmtPct(r.taxaEvasao)} dica={`${fmtN(r.evadidos)} evadidos ÷ ${fmtN(r.n)} matrículas`} />
+        <Kpi destaque rotulo="KPI em destaque · Taxa de evasão" valor={fmtPct(r.taxaEvasaoEnc)} dica={`${fmtN(r.evadidos)} evadidos ÷ ${fmtN(r.evadidos + r.concluidos)} encerradas`} />
         <Card>
           <p className="flex items-center gap-2 text-xs font-semibold tracking-wider text-brand uppercase">
             <Target className="size-4" aria-hidden /> Por que este KPI

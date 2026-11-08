@@ -71,8 +71,8 @@ export default function Inicio() {
           <Kpi
             destaque
             rotulo="Taxa de evasão"
-            valor={fmtPct(r.taxaEvasao)}
-            dica={`${fmtN(r.evadidos)} de ${fmtN(r.n)} matrículas · ${fmtPct(r.taxaEvasaoEnc)} entre as encerradas`}
+            valor={fmtPct(r.taxaEvasaoEnc)}
+            dica={`${fmtN(r.evadidos)} de ${fmtN(r.evadidos + r.concluidos)} encerradas · ${fmtPct(r.taxaEvasao)} sobre todas`}
           />
           <Kpi rotulo="Taxa de conclusão" valor={fmtPct(r.taxaConclusao)} dica={`${fmtN(r.concluidos)} concluídos`} tom="ok" />
           <Kpi rotulo="Ainda em andamento" valor={fmtPct(r.taxaAndamento)} dica={`${fmtN(r.andamento)} matrículas sem desfecho`} />

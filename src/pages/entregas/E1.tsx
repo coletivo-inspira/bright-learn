@@ -27,8 +27,7 @@ export default function E1() {
           <Target className="size-4" aria-hidden /> Pergunta de negócio (rascunho)
         </p>
         <p className="mt-3 max-w-4xl font-display text-2xl leading-snug font-bold sm:text-3xl">
-          Quais fatores estão associados à evasão dos alunos da BrightLearn e onde a plataforma deve agir primeiro para aumentar a conclusão dos
-          cursos?
+          Por que os alunos que demoram para fazer o primeiro acesso estão evadindo mais, e o que a BrightLearn deveria fazer a respeito?
         </p>
       </section>
 
@@ -48,7 +47,7 @@ export default function E1() {
               exatamente o que é preciso para entender <em>onde e por que</em> a retenção falha.
             </p>
             <p>
-              Hoje, <strong>{fmtPct(r.taxaEvasao)}</strong> das matrículas terminaram em evasão e apenas <strong>{fmtPct(r.taxaConclusao)}</strong> em
+              Hoje, <strong>{fmtPct(r.taxaEvasaoEnc)}</strong> das matrículas encerradas terminaram em evasão e apenas <strong>{fmtPct(r.taxaConclusao)}</strong> em
               conclusão. Reduzir a evasão é a alavanca mais direta para aumentar a conclusão.
             </p>
           </div>

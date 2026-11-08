@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import dicionario from '../data/dicionario.json';
-import { MESES_DISPONIVEIS, PCT_MEDIANA_POR_STATUS, NOTA_MEDIANA, RAW, ROWS, DIAS_CERCA } from '../lib/clean';
+import { MESES_DISPONIVEIS, RAW, ROWS, DIAS_CERCA } from '../lib/clean';
 import { resumo } from '../lib/analytics';
 import { baixarCsv } from '../lib/csv';
 import { fmtData, fmtMesLongo, fmtN, fmtPct } from '../lib/format';
@@ -46,7 +46,7 @@ const INDICE = new Map<string, string>(
         r.status,
         r.motivo ?? '',
         `${r.dias} dias`,
-        `${r.pct}%`,
+        r.pct == null ? '' : `${r.pct}%`,
         r.nota ?? '',
       ].join(' '),
     ),
@@ -55,8 +55,8 @@ const INDICE = new Map<string, string>(
 
 const ALERTAS: { chave: AlertaKey; curto: string; rotulo: string; explica: string }[] = [
   { chave: 'categoria', curto: 'Cat.', rotulo: 'Categoria padronizada', explica: 'A grafia da categoria era diferente (maiúsculas, acento ou espaço) e foi padronizada.' },
-  { chave: 'pct', curto: '% >100', rotulo: '% concluído corrigido', explica: 'Percentual acima de 100% (impossível) foi trocado pela mediana do mesmo status.' },
-  { chave: 'nota', curto: 'Nota', rotulo: 'Nota imputada', explica: 'Aluno concluído sem nota registrada: recebeu a mediana das notas dos concluídos.' },
+  { chave: 'pct', curto: '% >100', rotulo: '% concluído corrigido', explica: 'Percentual acima de 100% (impossível): Concluído virou 100%; Em andamento/Evadido ficaram em branco.' },
+  { chave: 'nota', curto: 'Nota', rotulo: 'Concluído sem nota', explica: 'Aluno concluído sem nota registrada: mantida em branco (não inventamos valor).' },
   { chave: 'outlierDias', curto: 'Dias↑', rotulo: 'Dias até 1º acesso atípico', explica: 'Demorou mais que a cerca de Tukey (Q3 + 1,5·IQR) para acessar. Mantido: é comportamento real.' },
   { chave: 'motivoNI', curto: 'Motivo?', rotulo: 'Motivo não informado', explica: 'Evadiu sem registrar o motivo. Mantido como categoria própria.' },
 ];
@@ -471,27 +471,25 @@ function Linha({ r, visao, onAbrir }: { r: Row; visao: Visao; onAbrir: () => voi
       <td className={td}>{r.dispositivo}</td>
       <td
         className={clsx(td, 'tnum text-right', f.pct && (bruta ? celBruto : celTratado))}
-        title={f.pct ? (bruta ? 'Valor impossível (> 100%)' : `Original: ${fmtN(r.pctOriginal, 1)}%`) : undefined}
+        title={f.pct ? (bruta ? 'Valor impossível (> 100%)' : r.pct == null ? `Em branco (original ${fmtN(r.pctOriginal, 1)}%)` : `Original: ${fmtN(r.pctOriginal, 1)}%`) : undefined}
       >
-        {fmtN(bruta ? r.pctOriginal : r.pct, 1)}%
+        {(bruta ? r.pctOriginal : r.pct) == null ? '—' : `${fmtN(bruta ? r.pctOriginal : r.pct, 1)}%`}
       </td>
       <td
         className={clsx(
           td,
           'tnum text-right',
-          bruta && notaAusenteConcluido && celBruto,
-          !bruta && f.nota && celTratado,
+          notaAusenteConcluido && (bruta ? celBruto : celTratado),
         )}
         title={
           bruta && notaAusenteConcluido
             ? 'Concluído sem nota (falha de registro)'
             : !bruta && f.nota
-              ? 'Imputada: mediana das notas dos concluídos'
+              ? 'Mantida em branco: concluído sem nota registrada'
               : undefined
         }
       >
         {fmtN(bruta ? r.notaOriginal : r.nota, 1)}
-        {!bruta && f.nota && <span aria-hidden>*</span>}
       </td>
       <td className={clsx(td, 'tnum text-right', f.outlierDias && 'font-semibold text-accent')} title={f.outlierDias ? `Acima da cerca de Tukey (${fmtN(DIAS_CERCA, 1)} dias)` : undefined}>
         {r.dias}
@@ -528,8 +526,8 @@ function Detalhe({ r, onFechar }: { r: Row | null; onFechar: () => void }) {
   const linhas = r
     ? [
         { campo: 'Categoria_Curso', bruto: `"${r.categoriaOriginal}"`, tratado: r.categoria, mudou: r.flags.categoria, nota: 'Padronizada (sem espaços, acentos ou caixa alta)' },
-        { campo: 'Pct_Concluido', bruto: `${fmtN(r.pctOriginal, 1)}%`, tratado: `${fmtN(r.pct, 1)}%`, mudou: r.flags.pct, nota: `Impossível (>100%): mediana do status "${r.status}" = ${fmtN(PCT_MEDIANA_POR_STATUS[r.status], 1)}%` },
-        { campo: 'Nota_Final', bruto: r.notaOriginal == null ? 'vazio' : fmtN(r.notaOriginal, 1), tratado: r.nota == null ? 'vazio (não se aplica)' : fmtN(r.nota, 1), mudou: r.flags.nota, nota: `Concluído sem nota: mediana dos concluídos = ${fmtN(NOTA_MEDIANA, 1)}` },
+        { campo: 'Pct_Concluido', bruto: `${fmtN(r.pctOriginal, 1)}%`, tratado: r.pct == null ? 'vazio' : `${fmtN(r.pct, 1)}%`, mudou: r.flags.pct, nota: r.flags.pct ? (r.pct == null ? `Impossível (>100%) e status "${r.status}": valor desconhecido, ficou em branco e fora do cálculo` : 'Impossível (>100%) em aluno Concluído: virou 100%') : 'Sem alteração' },
+        { campo: 'Nota_Final', bruto: r.notaOriginal == null ? 'vazio' : fmtN(r.notaOriginal, 1), tratado: r.nota == null ? (r.status === 'Concluído' ? 'vazio' : 'vazio (não se aplica)') : fmtN(r.nota, 1), mudou: r.flags.nota, nota: r.flags.nota ? 'Concluído sem nota: mantida em branco (falha de registro)' : r.status === 'Concluído' ? 'Sem alteração' : 'Nota só existe para concluídos' },
         { campo: 'Dias_Ate_Primeiro_Acesso', bruto: String(r.dias), tratado: String(r.dias), mudou: false, nota: r.flags.outlierDias ? `Atípico (> ${fmtN(DIAS_CERCA, 1)} dias), mas mantido: é dado real` : 'Sem alteração' },
         { campo: 'Motivo_Evasao', bruto: r.motivo ?? 'vazio', tratado: r.motivo ?? 'vazio', mudou: false, nota: r.flags.motivoNI ? 'Mantido como categoria "Não informado"' : r.status === 'Evadido' ? 'Sem alteração' : 'Só se aplica a evadidos' },
       ]

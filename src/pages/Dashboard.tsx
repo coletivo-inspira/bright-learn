@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [devs, setDevs] = useState<string[]>([]);
   const [de, setDe] = useState(MESES_DISPONIVEIS[0]);
   const [ate, setAte] = useState(MESES_DISPONIVEIS[MESES_DISPONIVEIS.length - 1]);
-  const [base, setBase] = useState<Base>('todas');
+  const [base, setBase] = useState<Base>('encerradas');
 
   const rows = useMemo(
     () =>
