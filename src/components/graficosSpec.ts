@@ -13,9 +13,9 @@ export const SPEC = {
   dias: {
     titulo: 'Evasão por tempo até o 1º acesso',
     pergunta: 'Quem demora mais para começar a estudar evade mais?',
-    tipo: 'Colunas',
+    tipo: 'Barras (ordem natural)',
     porque:
-      'Relaciona uma variável numérica agrupada em faixas ordenadas (0, 1, 2–3, 4–7, 8+ dias) com uma taxa. Colunas lado a lado deixam ver em que faixa a taxa "salta".',
+      'Relaciona faixas com ordem natural (0, 1, 2–3, 4–7, 8+ dias) com uma taxa. Mantemos essa ordem no eixo, sem ordenar da maior para a menor, porque é isso que mostra o salto depois da 1ª semana.',
   },
   motivos: {
     titulo: 'Motivos de evasão',
@@ -29,6 +29,12 @@ export const SPEC = {
     tipo: 'Barras + linha',
     porque:
       'Evolução no tempo pede linha (a taxa). As barras ao fundo mostram o volume de matrículas, ou seja, o tamanho da amostra que sustenta cada ponto.',
+  },
+  dispTaxa: {
+    titulo: 'Taxa de evasão por dispositivo',
+    pergunta: 'A evasão é maior em algum dispositivo de estudo?',
+    tipo: 'Barras',
+    porque: 'Compara a mesma taxa entre poucos grupos nominais (celular, computador, tablet). Barras partem do zero e deixam a diferença visível.',
   },
   dispositivo: {
     titulo: 'Desfecho por dispositivo',

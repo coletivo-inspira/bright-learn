@@ -63,6 +63,20 @@ export function GMes({ rows, base }: { rows: Row[]; base: Base }) {
   );
 }
 
+export function GDispTaxa({ rows, base, altura = 200 }: { rows: Row[]; base: Base; altura?: number }) {
+  const g = porGrupo(rows, (r) => r.dispositivo, DISPOSITIVOS, base).filter((x) => x.n > 0);
+  return (
+    <ChartCard {...SPEC.dispTaxa} rodape={`Taxa = ${nomeBase(base)}.`}>
+      <BarraTaxa
+        altura={altura}
+        dados={g.map((x) => ({ nome: x.nome, valor: x.taxa, n: x.n }))}
+        referencia={taxaEvasao(rows, base)}
+        descricao="Taxa de evasão por dispositivo"
+      />
+    </ChartCard>
+  );
+}
+
 export function GDispositivo({ rows, altura = 200 }: { rows: Row[]; altura?: number }) {
   const d = statusPor(rows, (r) => r.dispositivo, DISPOSITIVOS).filter((x) => x.n > 0);
   return (

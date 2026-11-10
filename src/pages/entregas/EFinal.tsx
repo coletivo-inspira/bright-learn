@@ -4,9 +4,9 @@ import { ExternalLink, FileText, MessageCircleQuestion, Mic2, Send } from 'lucid
 import { Callout, Card, SectionTitle, Tabela, td, th } from '../../components/ui';
 import { GRUPO } from '../../data/grupo';
 import { NOTA_MEDIANA, PROBLEMAS as P } from '../../lib/clean';
-import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP } from '../../lib/insights';
+import { ALAVANCAS, CRUZ, DIAG, evasoesEvitadas, fmtP } from '../../lib/insights';
 import { fmtN, fmtPct } from '../../lib/format';
-import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO } from '../../lib/model';
+import { LIMIAR_DIAS } from '../../lib/model';
 import { href } from '../../lib/router';
 
 const CRITERIOS: { bloco: string; itens: [string, number, string][] }[] = [
@@ -162,10 +162,8 @@ export default function EFinal() {
           a diferença provavelmente não é acaso, mas isso <em>não prova</em> que o tempo até o 1º acesso causa a evasão.
         </Pergunta>
 
-        <Pergunta q="Como funciona o modelo preditivo e o que é o AUC?">
-          Uma regressão logística usa três informações (demorou {LIMIAR_DIAS}+ dias, categoria e celular) para estimar a probabilidade de evasão, treinada nas {fmtN(MODELO.nTreino)} matrículas com desfecho. O AUC ({fmtN(MODELO.auc, 2)}) é a
-          chance de o modelo dar risco maior a um evadido do que a um concluído escolhidos ao acaso: 0,5 é chute, 1,0 é perfeito. {fmtN(MODELO.auc, 2)} é um poder modesto, útil para priorizar. Dos {fmtN(EM_ANDAMENTO.length)} em andamento, a soma das probabilidades indica ~
-          {fmtN(EVASOES_ESPERADAS, 0)} evasões.
+        <Pergunta q="Como vocês chegaram ao perfil de maior risco na preditiva?">
+          Cruzamos Idiomas com a demora no 1º acesso e olhamos a taxa de evasão observada em cada combinação: Idiomas com {LIMIAR_DIAS}+ dias evade {fmtPct(CRUZ.idiomasLento.taxa)} ({CRUZ.idiomasLento.evadidos} de {CRUZ.idiomasLento.n}), Idiomas com menos tempo {fmtPct(CRUZ.idiomasRapido.taxa)}, demais categorias com {LIMIAR_DIAS}+ dias {fmtPct(CRUZ.outrasLento.taxa)} e demais com menos tempo {fmtPct(CRUZ.outrasRapido.taxa)}. Não usamos modelo estatístico: é a própria tabela. O cuidado é que Idiomas com demora tem só {CRUZ.idiomasLento.n} matrículas, então o sinal mais seguro é o tempo.
         </Pergunta>
 
         <Pergunta q="De onde vêm as 'evasões evitadas' da prescritiva?">

@@ -3,10 +3,10 @@ import clsx from 'clsx';
 import { Check, Copy, Pause, Play, RotateCcw, Scale, ShieldAlert } from 'lucide-react';
 import { Badge, Callout, Card, Kpi, SectionTitle, Tabela, td, th } from '../../components/ui';
 import { GRUPO } from '../../data/grupo';
-import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib/insights';
+import { ALAVANCAS, CRUZ, DIAG, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib/insights';
 import { fmtN, fmtPct } from '../../lib/format';
 import { PROBLEMAS as P } from '../../lib/clean';
-import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO, PERFIL_DEMORA, PERFIL_RAPIDO } from '../../lib/model';
+import { LIMIAR_DIAS } from '../../lib/model';
 import { href } from '../../lib/router';
 import { usePersistido } from '../../lib/storage';
 
@@ -32,8 +32,8 @@ function Recomendacao() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi rotulo="Ponto de partida" valor={fmtPct(g.taxaEvasaoEnc)} tom="bad" dica={`evasão entre encerradas · ${fmtPct(g.taxaEvasao)} sobre todas`} />
         <Kpi rotulo={`${on.alvo}`} valor={fmtPct(on.taxaAtual)} tom="bad" dica={`contra ${fmtPct(on.taxaMeta)} · ${fmtP(on.p)}`} />
-        <Kpi rotulo="Maior risco no modelo" valor={fmtPct(PERFIL_DEMORA.risco, 0)} tom="bad" dica={`1º acesso em ${LIMIAR_DIAS}+ dias, contra ${fmtPct(PERFIL_RAPIDO.risco, 0)} no mesmo dia`} />
-        <Kpi rotulo="Em andamento" valor={`~${fmtN(EVASOES_ESPERADAS, 0)}`} dica={`de ${fmtN(EM_ANDAMENTO.length)} devem evadir (modelo, AUC ${fmtN(MODELO.auc, 2)})`} />
+        <Kpi rotulo="Idiomas + demora" valor={fmtPct(CRUZ.idiomasLento.taxa)} tom="bad" dica={`${CRUZ.idiomasLento.evadidos} de ${CRUZ.idiomasLento.n} matrículas (amostra pequena)`} />
+        <Kpi rotulo="Em andamento" valor={fmtN(g.andamento)} dica="matrículas ainda sem desfecho, fora da taxa" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -51,7 +51,7 @@ function Recomendacao() {
               <strong>Idiomas e celular agravam:</strong> Idiomas evade {fmtPct(id.taxaAtual)} contra {fmtPct(id.taxaMeta)} nas demais, e "Falta de tempo" é o motivo mais citado. Ficam como apoio, não como foco.
             </li>
             <li>
-              <strong>Dá para priorizar:</strong> o modelo aponta as matrículas em andamento de maior risco para o contato começar por elas.
+              <strong>Dá para priorizar:</strong> o contato começa por quem passa do 3º dia sem acessar.
             </li>
           </ol>
         </Card>
@@ -102,7 +102,7 @@ function Recomendacao() {
             ['Desfecho incompleto', `${fmtN(g.andamento)} matrículas (${fmtPct(g.taxaAndamento)}) ainda estão em andamento; a evasão final pode ser maior que a observada.`],
             ['Unidade é a matrícula', 'Um mesmo aluno pode ter várias matrículas; a base não traz identificador do aluno.'],
             ['Associação não é causa', 'As diferenças entre grupos podem ter outras causas que a base não registra (motivação, preço, qualidade do curso).'],
-            ['Modelo modesto', `AUC ${fmtN(MODELO.auc, 2)}: serve para priorizar, não para decidir sobre um aluno.`],
+            ['Amostras pequenas', `Em alguns cruzamentos (ex.: Idiomas com ${LIMIAR_DIAS}+ dias, ${CRUZ.idiomasLento.n} matrículas) os números são frágeis.`],
             ['Dados tratados', `Corrigimos ${P.pct.linhas} valores de % (concluídos → 100; demais em branco) e deixamos ${P.nota.falhaRegistro} notas em branco, sem imputar; nada foi inventado.`],
             ['Motivo não informado', `${fmtPct(P.motivo.naoInformado / P.motivo.evadidos, 0)} dos evadidos não registraram motivo; a causa real desses casos é desconhecida.`],
             ['Sem custos nem receita', 'A base não traz preço nem custo, então não calculamos retorno financeiro (ROI) das ações.'],
@@ -133,7 +133,7 @@ const SECOES = [
 
 const REGRAS = ['PDF em A4', 'Fonte Arial ou Times New Roman, tamanho 12', 'Espaçamento 1,5', 'Margens de 2,5 cm', 'Até 6 páginas (sem contar capa e referências)', 'Registro de onde a IA foi usada'];
 
-const IA_PADRAO = `Uso de IA neste trabalho: utilizamos a ferramenta Claude (Anthropic) como apoio para (1) montar o site que apresenta a base e as análises, (2) sugerir o método de padronização das categorias e as fórmulas da taxa de evasão, da regressão logística, e (3) revisar a redação. Todos os números foram conferidos pelo grupo contra os totais da base (${fmtN(DIAG.geral.n)} matrículas; ${fmtN(DIAG.geral.evadidos)} evadidos = ${fmtPct(DIAG.geral.taxaEvasao)}; ${fmtN(DIAG.geral.concluidos)} concluídos = ${fmtPct(DIAG.geral.taxaConclusao)}) e cada integrante consegue explicar como cada cálculo foi feito.`;
+const IA_PADRAO = `Uso de IA neste trabalho: utilizamos a ferramenta Claude (Anthropic) como apoio para (1) montar o site que apresenta a base e as análises, (2) sugerir o método de padronização das categorias e as faixas de dias e a fórmula da taxa de evasão, e (3) revisar a redação. Todos os números foram conferidos pelo grupo contra os totais da base (${fmtN(DIAG.geral.n)} matrículas; ${fmtN(DIAG.geral.evadidos)} evadidos = ${fmtPct(DIAG.geral.taxaEvasao)}; ${fmtN(DIAG.geral.concluidos)} concluídos = ${fmtPct(DIAG.geral.taxaConclusao)}) e cada integrante consegue explicar como cada cálculo foi feito.`;
 
 function RegistroIA() {
   const [texto, setTexto] = usePersistido('bl-ia', IA_PADRAO);

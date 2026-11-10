@@ -5,13 +5,12 @@ import { Eye, Lightbulb, Route, Search, Sparkles } from 'lucide-react';
 import { BarraTaxa } from '../../components/charts';
 import { GDias } from '../../components/GraficosBase';
 import { Badge, Callout, Card, SectionTitle, Tabela, td, th } from '../../components/ui';
-import { ALAVANCAS, DIAG, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib/insights';
+import { ALAVANCAS, CRUZ, DIAG, MOTIVO_TEMPO, evasoesEvitadas, fmtP, novaTaxaGeral } from '../../lib/insights';
 import { porGrupo } from '../../lib/analytics';
 import { ROWS } from '../../lib/clean';
 import { fmtN, fmtPct } from '../../lib/format';
-import { EM_ANDAMENTO, EVASOES_ESPERADAS, LIMIAR_DIAS, MODELO, PERFIL_ALTO, PERFIL_BAIXO, PERFIL_DEMORA, PERFIL_RAPIDO, prever } from '../../lib/model';
-import { CATEGORIAS, DISPOSITIVOS } from '../../lib/types';
-import type { Categoria, Dispositivo } from '../../lib/types';
+import { LIMIAR_DIAS } from '../../lib/model';
+import { CATEGORIAS } from '../../lib/types';
 
 /* ------------------------------------------------------------------ */
 /* Estrutura de cada análise                                           */
@@ -105,61 +104,6 @@ function Evidencia({ rotulo, a, b, nomeA, nomeB, p, hip }: { rotulo: string; a: 
 }
 
 /* ------------------------------------------------------------------ */
-/* Preditiva: calculadora                                              */
-/* ------------------------------------------------------------------ */
-const selectCls = 'mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm font-normal text-ink';
-
-function Calculadora() {
-  const [cat, setCat] = useState<Categoria>('Idiomas');
-  const [dev, setDev] = useState<Dispositivo>('Celular');
-  const [dias, setDias] = useState(10);
-  const risco = prever({ categoria: cat, dispositivo: dev, dias });
-  const alto = risco >= MODELO.base * 1.25;
-  const baixo = risco <= MODELO.base * 0.75;
-
-  return (
-    <div className="rounded-xl border border-line p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <Sparkles className="size-4 text-brand" aria-hidden /> Calculadora de risco: teste um perfil
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <label className="text-xs font-semibold text-muted uppercase">
-          Categoria
-          <select className={selectCls} value={cat} onChange={(e) => setCat(e.target.value as Categoria)}>
-            {CATEGORIAS.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-muted uppercase">
-          Dispositivo
-          <select className={selectCls} value={dev} onChange={(e) => setDev(e.target.value as Dispositivo)}>
-            {DISPOSITIVOS.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-muted uppercase">
-          Dias até o 1º acesso: <span className="tnum text-ink">{dias}</span>
-          <input type="range" min={0} max={24} value={dias} onChange={(e) => setDias(Number(e.target.value))} className="mt-3 w-full accent-[var(--brand)]" />
-        </label>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-4">
-        <p className={clsx('tnum font-display text-4xl font-extrabold', alto ? 'text-bad' : baixo ? 'text-ok' : 'text-ink')}>{fmtPct(risco, 0)}</p>
-        <div className="min-w-[12rem] flex-1">
-          <p className="text-sm font-semibold">{alto ? 'Risco alto de evasão' : baixo ? 'Risco baixo de evasão' : 'Risco próximo da média'}</p>
-          <div className="relative mt-2 h-2.5 rounded-full bg-surface-2" aria-hidden>
-            <div className={clsx('h-full rounded-full', alto ? 'bg-bad' : baixo ? 'bg-ok' : 'bg-brand')} style={{ width: `${risco * 100}%` }} />
-            <div className="absolute -top-1 h-4.5 w-0.5 bg-ink" style={{ left: `${MODELO.base * 100}%` }} title="Média histórica" />
-          </div>
-          <p className="mt-1 text-[11px] text-muted">A marca preta é a taxa média entre as matrículas encerradas ({fmtPct(MODELO.base)}).</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Prescritiva: simulador                                              */
 /* ------------------------------------------------------------------ */
 function Simulador() {
@@ -189,7 +133,7 @@ function Simulador() {
           </tr>
         </thead>
         <tbody>
-          {ALAVANCAS.map((a) => (
+          {ALAVANCAS.slice(0, 1).map((a) => (
             <tr key={a.id}>
               <td className={td}>
                 <p className="font-semibold">{a.nome}</p>
@@ -216,8 +160,7 @@ function Simulador() {
         </tbody>
       </Tabela>
       <p className="text-xs leading-relaxed text-muted">
-        Cada linha é calculada sozinha: <code>matrículas do grupo × (taxa atual − taxa da referência) × % que a ação fecha</code>. Os grupos se sobrepõem (um aluno de Idiomas
-        no celular que demorou 10 dias entra nas três), então <strong>não some as linhas</strong>. O esforço é uma estimativa do grupo, a validar com a empresa.
+        Cálculo: <code>matrículas do grupo × (taxa atual − taxa da referência) × % que a ação fecha</code>. Simulamos só o contato no 3º e no 5º dia; a trilha flexível em Idiomas e a experiência no celular ficam para uma segunda fase. O esforço é uma estimativa, a validar com a empresa.
       </p>
     </div>
   );
@@ -231,7 +174,6 @@ export default function E3() {
   const maior = porCat[0];
   const menor = porCat[porCat.length - 1];
   const g = DIAG.geral;
-  const top = EM_ANDAMENTO.slice(0, 8);
   const t = DIAG.teste;
 
   return (
@@ -345,11 +287,33 @@ export default function E3() {
               </div>
             </div>
             <GDias rows={ROWS} base="encerradas" altura={210} />
+            <div className="rounded-xl border border-line p-3">
+              <p className="text-sm font-semibold">E o &quot;por quê&quot;? Quem demora sai pelo mesmo motivo de quem começa rápido?</p>
+              <Tabela className="mt-2">
+                <thead>
+                  <tr>
+                    <th className={th}>Motivo de evasão</th>
+                    <th className={`${th} text-right`}>Até {LIMIAR_DIAS - 1} dias ({MOTIVO_TEMPO.nRapido} evadidos)</th>
+                    <th className={`${th} text-right`}>{LIMIAR_DIAS}+ dias ({MOTIVO_TEMPO.nLento} evadidos)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MOTIVO_TEMPO.linhas.map((l) => (
+                    <tr key={l.motivo}>
+                      <td className={td}>{l.motivo}</td>
+                      <td className={clsx(td, 'tnum text-right')}>{fmtPct(l.rapido, 0)}</td>
+                      <td className={clsx(td, 'tnum text-right')}>{fmtPct(l.lento, 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabela>
+              <p className="mt-2 text-xs text-muted">Os motivos são parecidos nos dois grupos (com {MOTIVO_TEMPO.nLento} casos nos que demoram, as diferenças são pequenas). Ou seja, a demora não parece ter uma causa própria: é um <strong>sinal precoce de desengajamento</strong>, o que justifica contatar o aluno antes que ele esfrie.</p>
+            </div>
           </div>
         }
         acao={
           <>
-            Atacar a causa que mais pesa e é mais fácil de agir: <strong>ativar o aluno logo na primeira semana</strong> (a taxa fica entre 36% e 38% até 7 dias e salta depois disso) e deixar{' '}
+            Atacar o que a plataforma consegue agir logo no início: <strong>ativar o aluno na primeira semana</strong> (a taxa fica entre 36% e 38% até 7 dias e salta depois disso) e deixar{' '}
             Idiomas (<strong>falta de tempo</strong>) e o celular como apoio. São sinais reais, mas o 1º acesso é o que a plataforma consegue atacar logo no início.
           </>
         }
@@ -360,137 +324,58 @@ export default function E3() {
       <Analise
         Icone={Sparkles}
         tipo="preditiva"
-        responde="O que vai acontecer com quem ainda está estudando?"
+        responde="Que perfil de matrícula nova tem mais risco?"
         cor="bg-brand text-white"
-        pergunta="Juntando os sinais da diagnóstica, que perfil de matrícula nova tem mais risco de evadir, e quanto pesa a demora no 1º acesso nisso?"
+        pergunta="Juntando os sinais da diagnóstica, que perfil de matrícula nova tem mais risco de evadir?"
         como={
           <>
             <p>
-              Regressão logística simples, treinada nas {fmtN(MODELO.nTreino)} matrículas com desfecho (concluído × evadido). As {fmtN(EM_ANDAMENTO.length)} em andamento ainda não têm desfecho, então são justamente as que recebem a previsão.
-            </p>
-            <p className="mt-2">
-              Validamos em 5 partes (treina em 4, testa em 1): AUC = <strong>{fmtN(MODELO.auc, 2)}</strong> e acerto de <strong>{fmtPct(MODELO.acuracia, 0)}</strong>.
+              Cruzamos os dois sinais mais fortes da diagnóstica, a categoria <strong>Idiomas</strong> e a demora de <strong>{LIMIAR_DIAS}+ dias</strong> no 1º acesso, e olhamos a taxa de evasão observada em cada combinação (só matrículas encerradas). Sem modelo estatístico: a própria tabela mostra o risco.
             </p>
           </>
         }
         resultado={
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-bad/40 bg-bad-soft/40 p-3">
-                <p className="text-xs font-semibold tracking-wide text-bad uppercase">Demorou {LIMIAR_DIAS}+ dias</p>
-                <p className="tnum mt-1 font-display text-3xl font-extrabold text-bad">{fmtPct(PERFIL_DEMORA.risco, 0)}</p>
-                <p className="text-sm">{PERFIL_DEMORA.descricao}</p>
-              </div>
-              <div className="rounded-xl border border-ok/40 bg-ok-soft/40 p-3">
-                <p className="text-xs font-semibold tracking-wide text-ok uppercase">Acessou no mesmo dia</p>
-                <p className="tnum mt-1 font-display text-3xl font-extrabold text-ok">{fmtPct(PERFIL_RAPIDO.risco, 0)}</p>
-                <p className="text-sm">{PERFIL_RAPIDO.descricao}</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted">Só o primeiro acesso muda entre os dois perfis: é o sinal que mais pesa. Idiomas e celular aumentam o risco por cima disso (extremos abaixo).</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-bad/40 bg-bad-soft/40 p-3">
-                <p className="text-xs font-semibold tracking-wide text-bad uppercase">Perfil de maior risco</p>
-                <p className="tnum mt-1 font-display text-3xl font-extrabold text-bad">{fmtPct(PERFIL_ALTO.risco, 0)}</p>
-                <p className="text-sm">{PERFIL_ALTO.descricao}</p>
-              </div>
-              <div className="rounded-xl border border-ok/40 bg-ok-soft/40 p-3">
-                <p className="text-xs font-semibold tracking-wide text-ok uppercase">Perfil de menor risco</p>
-                <p className="tnum mt-1 font-display text-3xl font-extrabold text-ok">{fmtPct(PERFIL_BAIXO.risco, 0)}</p>
-                <p className="text-sm">{PERFIL_BAIXO.descricao}</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted">Média entre as encerradas: {fmtPct(MODELO.base, 0)}. Use a calculadora abaixo para testar qualquer outro perfil.</p>
-            <Calculadora />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-line p-3">
-                <p className="text-xs font-semibold tracking-wide text-muted uppercase">Previsão para quem está em andamento</p>
-                <p className="tnum mt-1 font-display text-3xl font-extrabold text-bad">~{fmtN(EVASOES_ESPERADAS, 0)}</p>
-                <p className="text-xs text-muted">
-                  de {fmtN(EM_ANDAMENTO.length)} matrículas ({fmtPct(EVASOES_ESPERADAS / EM_ANDAMENTO.length, 0)}) devem evadir se todas encerrarem.
-                </p>
-              </div>
-              <div className="rounded-xl border border-line p-3">
-                <p className="text-xs font-semibold tracking-wide text-muted uppercase">O modelo separa bem os grupos?</p>
-                <table className="mt-1 w-full text-xs">
-                  <thead>
-                    <tr className="text-left text-muted">
-                      <th className="py-1 font-medium">Faixa</th>
-                      <th className="py-1 text-right font-medium">Previsto</th>
-                      <th className="py-1 text-right font-medium">Real</th>
+          <div className="space-y-3">
+            <Tabela>
+              <thead>
+                <tr>
+                  <th className={th}>Perfil</th>
+                  <th className={`${th} text-right`}>Até {LIMIAR_DIAS - 1} dias</th>
+                  <th className={`${th} text-right`}>{LIMIAR_DIAS}+ dias</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Idiomas', CRUZ.idiomasRapido, CRUZ.idiomasLento],
+                  ['Demais categorias', CRUZ.outrasRapido, CRUZ.outrasLento],
+                ].map(([nome, r, l]) => {
+                  const rr = r as typeof CRUZ.idiomasRapido;
+                  const ll = l as typeof CRUZ.idiomasRapido;
+                  return (
+                    <tr key={nome as string}>
+                      <td className={clsx(td, 'font-semibold')}>{nome as string}</td>
+                      <td className={clsx(td, 'tnum text-right')}>
+                        {fmtPct(rr.taxa)} <span className="text-xs text-muted">({rr.evadidos} de {rr.n})</span>
+                      </td>
+                      <td className={clsx(td, 'tnum text-right font-semibold text-bad')}>
+                        {fmtPct(ll.taxa)} <span className="text-xs font-normal text-muted">({ll.evadidos} de {ll.n})</span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {MODELO.calibracao.map((c) => (
-                      <tr key={c.nome} className="border-t border-line">
-                        <td className="py-1">{c.nome}</td>
-                        <td className="tnum py-1 text-right">{fmtPct(c.previsto, 0)}</td>
-                        <td className="tnum py-1 text-right font-semibold">{fmtPct(c.observado, 0)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">8 matrículas em andamento com maior risco previsto</p>
-              <Tabela>
-                <thead>
-                  <tr>
-                    <th className={th}>ID</th>
-                    <th className={th}>Categoria</th>
-                    <th className={th}>Dispositivo</th>
-                    <th className={`${th} text-right`}>Dias 1º acesso</th>
-                    <th className={`${th} text-right`}>% concluído</th>
-                    <th className={`${th} text-right`}>Risco</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {top.map(({ row, risco }) => (
-                    <tr key={row.id}>
-                      <td className={clsx(td, 'tnum font-medium')}>{row.id}</td>
-                      <td className={td}>{row.categoria}</td>
-                      <td className={td}>{row.dispositivo}</td>
-                      <td className={clsx(td, 'tnum text-right')}>{row.dias}</td>
-                      <td className={clsx(td, 'tnum text-right')}>{fmtN(row.pct, 0)}%</td>
-                      <td className={clsx(td, 'tnum text-right font-semibold text-bad')}>{fmtPct(risco, 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Tabela>
-            </div>
-            <details className="rounded-xl border border-line p-3 text-sm">
-              <summary className="cursor-pointer font-semibold">Ver o modelo (coeficientes e razões de chance)</summary>
-              <Tabela className="mt-3">
-                <thead>
-                  <tr>
-                    <th className={th}>Fator</th>
-                    <th className={`${th} text-right`}>Coeficiente</th>
-                    <th className={`${th} text-right`}>Razão de chance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {MODELO.nomes.map((n, i) => (
-                    <tr key={n}>
-                      <td className={td}>{n}</td>
-                      <td className={clsx(td, 'tnum text-right')}>{fmtN(MODELO.coef[i], 2)}</td>
-                      <td className={clsx(td, 'tnum text-right font-semibold')}>{i === 0 ? '—' : `×${fmtN(Math.exp(MODELO.coef[i]), 1)}`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Tabela>
-              <p className="mt-2 text-xs text-muted">
-                Razão de chance ×3,0 significa que a "chance" (odds) de evadir é 3 vezes maior que a do grupo de referência, mantidos os demais fatores. A chance não é a mesma coisa que a probabilidade.
-              </p>
-            </details>
+                  );
+                })}
+              </tbody>
+            </Tabela>
+            <p className="text-sm">
+              O perfil de maior risco é <strong>Idiomas com demora</strong>, mas são só {CRUZ.idiomasLento.n} matrículas, então esse número é frágil. O sinal mais seguro é o <strong>tempo</strong>: em qualquer categoria, quem passa de {LIMIAR_DIAS} dias evade bem mais.
+            </p>
           </div>
         }
         acao={
           <>
-            Como o 1º acesso é o sinal que mais pesa, o sistema <strong>acompanha cada matrícula nova até o 1º acesso</strong> e passa a marcá-la como risco alto quando o prazo avança (a partir do 3º dia sem acessar); Idiomas e celular entram só como agravantes. Para quem já está estudando, o time recebe toda semana a <strong>lista das {fmtN(EM_ANDAMENTO.length)} matrículas em andamento ordenada por risco</strong>.
+            Acompanhar cada matrícula nova até o 1º acesso e marcar como <strong>risco alto</strong> quem passa do <strong>3º dia</strong> sem acessar, com atenção extra em Idiomas.
           </>
         }
-        limite={`AUC ${fmtN(MODELO.auc, 2)} indica poder preditivo modesto (0,5 = chute; 1,0 = perfeito): o modelo ajuda a priorizar grupos, mas não decide sozinho o destino de um aluno. Faltam variáveis como engajamento semanal ou preço.`}
+        limite="Taxas observadas, não previsões individuais. Poucos casos em alguns cruzamentos, então os números são um guia para priorizar, não uma garantia."
       />
 
       {/* ================= Prescritiva ================= */}

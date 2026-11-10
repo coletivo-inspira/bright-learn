@@ -1,5 +1,5 @@
 import { Target } from 'lucide-react';
-import { GCategoria, GDias, GDispositivo, GMes, GMotivos } from '../../components/GraficosBase';
+import { GCategoria, GDias, GDispTaxa } from '../../components/GraficosBase';
 import { SPEC } from '../../components/graficosSpec';
 import { Badge, Callout, Card, Kpi, SectionTitle, Tabela, td, th } from '../../components/ui';
 import { resumo } from '../../lib/analytics';
@@ -12,18 +12,29 @@ const DESCARTADOS: Record<keyof typeof SPEC, string> = {
   dias: 'Linha: as faixas são poucas e discretas. Dispersão com 820 pontos sobrepostos esconderia o salto.',
   motivos: 'Barras também serviriam; a rosca foi escolhida por responder "quanto do todo?". Com 5 fatias o rótulo continua legível.',
   mes: 'Só barras esconderia a taxa; só linha esconderia o tamanho da amostra de cada mês.',
+  dispTaxa: 'Barras em números absolutos fariam o celular parecer pior só por ter mais alunos; por isso usamos a taxa. Pizza não serve para comparar taxas.',
   dispositivo: 'Barras simples em números absolutos fariam o celular parecer pior só por ter mais alunos.',
+};
+
+/** Qual das 4 perguntas de análise cada gráfico responde. */
+const PILAR: Record<keyof typeof SPEC, string> = {
+  dias: 'Diagnóstica (principal)',
+  categoria: 'Descritiva',
+  dispTaxa: 'Diagnóstica',
+  motivos: 'Diagnóstica (apoio)',
+  mes: 'Descritiva (apoio)',
+  dispositivo: 'Descritiva (apoio)',
 };
 
 export default function E4() {
   const r = resumo(ROWS);
-  const ordem = ['categoria', 'dias', 'motivos', 'mes', 'dispositivo'] as const;
+  const ordem = ['dias', 'categoria', 'dispTaxa'] as const;
 
   return (
     <>
       <Callout tipo="info" titulo="O que esta entrega pede">
         Pelo menos <strong>3 gráficos esboçados</strong> para o dashboard, cada um com o tipo justificado pela relação <em>pergunta → gráfico</em>, e <strong>1 KPI em destaque</strong>. Aqui estão{' '}
-        <strong>5 gráficos</strong> e o KPI definido; a versão interativa, com filtros, está no <a className="font-semibold text-brand-ink underline" href={href('dashboard')}>Dashboard</a>.
+        <strong>3 gráficos principais</strong> e o KPI definido, cada um ligado a uma das 4 perguntas de análise; a versão interativa, com filtros, está no <a className="font-semibold text-brand-ink underline" href={href('dashboard')}>Dashboard</a>.
       </Callout>
 
       {/* ---------- KPI ---------- */}
@@ -37,7 +48,7 @@ export default function E4() {
             <li>Responde direto à pergunta de negócio (evasão) com um número só que a diretoria entende.</li>
             <li>É acionável: sobe ou desce conforme as ações de retenção que o grupo recomenda, então serve para acompanhar o piloto.</li>
             <li>
-              É simples de calcular e de explicar: evadidos ÷ matrículas. Ao lado dele, a <strong>taxa de conclusão</strong> ({fmtPct(r.taxaConclusao)}) e a versão "só encerradas" ({fmtPct(r.taxaEvasaoEnc)}) dão o
+              É simples de calcular e de explicar: evadidos ÷ (concluídos + evadidos), só entre as encerradas. Ao lado dele, a <strong>taxa de conclusão</strong> ({fmtPct(r.taxaConclusao)}) e a versão sobre todas as matrículas ({fmtPct(r.taxaEvasao)}) dão o
               contexto.
             </li>
           </ul>
@@ -53,6 +64,7 @@ export default function E4() {
           <thead>
             <tr>
               <th className={th}>Pergunta</th>
+              <th className={th}>Responde</th>
               <th className={th}>Gráfico escolhido</th>
               <th className={th}>Por quê</th>
               <th className={th}>Alternativas descartadas</th>
@@ -62,6 +74,7 @@ export default function E4() {
             {ordem.map((k) => (
               <tr key={k}>
                 <td className={`${td} font-medium`}>{SPEC[k].pergunta}</td>
+                <td className={td}>{PILAR[k]}</td>
                 <td className={td}>
                   <Badge tom="brand">{SPEC[k].tipo}</Badge>
                 </td>
@@ -77,14 +90,11 @@ export default function E4() {
       <section>
         <SectionTitle eyebrow="Esboços" title="Os gráficos com os dados tratados" />
         <div className="grid gap-5 lg:grid-cols-2">
-          <GCategoria rows={ROWS} base="todas" />
-          <GDias rows={ROWS} base="todas" />
-          <GMotivos rows={ROWS} />
-          <GDispositivo rows={ROWS} />
+          <GDias rows={ROWS} base="encerradas" />
+          <GCategoria rows={ROWS} base="encerradas" />
+          <GDispTaxa rows={ROWS} base="encerradas" />
         </div>
-        <div className="mt-5">
-          <GMes rows={ROWS} base="todas" />
-        </div>
+        <p className="mt-4 text-sm text-muted">Gráficos de apoio (motivos e evolução por mês) ficam no Dashboard; aqui ficam os três principais.</p>
       </section>
 
       <Callout tipo="dica" titulo="Como usar no documento escrito">

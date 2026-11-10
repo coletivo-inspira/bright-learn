@@ -123,3 +123,26 @@ export const novaTaxaGeral = (a: Alavanca, efetividade: number): number =>
   (DIAG.enc.evadidos - evasoesEvitadas(a, efetividade)) / DIAG.enc.n;
 
 export const fmtP = (p: number): string => (p < 0.001 ? 'p < 0,001' : `p = ${p.toFixed(3).replace('.', ',')}`);
+
+/* ---------- preditiva sem modelo: cruzamento Idiomas × demora (só encerradas) ---------- */
+const grp = (rows: Row[]) => ({ n: rows.length, evadidos: evadidos(rows), taxa: taxa(rows) });
+export const CRUZ = {
+  idiomasLento: grp(encerradas.filter((r) => r.categoria === 'Idiomas' && r.dias >= LIMIAR_DIAS)),
+  idiomasRapido: grp(encerradas.filter((r) => r.categoria === 'Idiomas' && r.dias < LIMIAR_DIAS)),
+  outrasLento: grp(encerradas.filter((r) => r.categoria !== 'Idiomas' && r.dias >= LIMIAR_DIAS)),
+  outrasRapido: grp(encerradas.filter((r) => r.categoria !== 'Idiomas' && r.dias < LIMIAR_DIAS)),
+};
+
+/* ---------- o "por quê": motivo de evasão × tempo até o 1º acesso (só evadidos) ---------- */
+const evad = ROWS.filter((r) => r.status === 'Evadido');
+const evadLento = evad.filter((r) => r.dias >= LIMIAR_DIAS);
+const evadRapido = evad.filter((r) => r.dias < LIMIAR_DIAS);
+export const MOTIVO_TEMPO = {
+  nRapido: evadRapido.length,
+  nLento: evadLento.length,
+  linhas: ['Falta de tempo', 'Conteúdo muito difícil', 'Conteúdo pouco relevante', 'Problema técnico', 'Não informado'].map((m) => ({
+    motivo: m,
+    rapido: evadRapido.filter((r) => r.motivo === m).length / evadRapido.length,
+    lento: evadLento.filter((r) => r.motivo === m).length / evadLento.length,
+  })),
+};
